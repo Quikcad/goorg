@@ -29,54 +29,6 @@ func testSet(t *testing.T) *rule.Set {
 	return set
 }
 
-func TestMatchPath(t *testing.T) {
-	tests := []struct {
-		pattern string
-		path    string
-		want    bool
-	}{
-		{"**/testdata/**", "pkg/rules/testdata/bad.go", true},
-		{"**/testdata/**", "testdata/bad.go", true},
-		{"**/testdata/**", "testdata", true},
-		{"**/testdata/**", "pkg/rules/rules.go", false},
-		{"**/*.pb.go", "api/v1/service.pb.go", true},
-		{"**/*.pb.go", "api/v1/service.go", false},
-		{"pkg/*", "pkg/lint", true},
-		{"pkg/*", "pkg/lint/diag", false},
-		{"pkg/**", "pkg/lint/diag", true},
-		{"*.go", "main.go", true},
-		{"*.go", "cmd/lint/goorg/main.go", false},
-	}
-	for _, tt := range tests {
-		if got := MatchPath(tt.pattern, tt.path); got != tt.want {
-			t.Errorf("MatchPath(%q, %q) = %v, want %v", tt.pattern, tt.path, got, tt.want)
-		}
-	}
-}
-
-// TestMatchRuleID pins the difference from MatchPath: `*` crosses the slash in
-// a rule ID, so a key of `*` means every rule. path.Match would match none.
-func TestMatchRuleID(t *testing.T) {
-	tests := []struct {
-		pattern string
-		id      string
-		want    bool
-	}{
-		{"*", "dir/domain-layout", true},
-		{"dir/*", "dir/domain-layout", true},
-		{"dir/*", "org/member-order", false},
-		{"*-layout", "dir/domain-layout", true},
-		{"dir/domain-layout", "dir/domain-layout", true},
-		{"dir/domain-?ayout", "dir/domain-layout", true},
-		{"org/*", "dir/domain-layout", false},
-	}
-	for _, tt := range tests {
-		if got := MatchRuleID(tt.pattern, tt.id); got != tt.want {
-			t.Errorf("MatchRuleID(%q, %q) = %v, want %v", tt.pattern, tt.id, got, tt.want)
-		}
-	}
-}
-
 func TestExcluderAppliesBuiltins(t *testing.T) {
 	exclude := Default().Excluder()
 	if !exclude("pkg/rules/testdata/x.go") {

@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/Quikcad/goorg/pkg/lint/diag"
 	"github.com/Quikcad/goorg/pkg/lint/rule"
 	"github.com/Quikcad/goorg/pkg/source/project"
@@ -55,6 +57,19 @@ func Load(t *testing.T, files map[string]string) *project.Project {
 func Run(t *testing.T, r *rule.Rule, files map[string]string) []string {
 	t.Helper()
 	return formatFindings(r.Check(rule.NewContext(Load(t, files), nil)))
+}
+
+// RunWith executes a rule over a fixture tree with explicit settings, which are
+// round-tripped through YAML exactly as a real .goorg.yaml would be. That keeps
+// a settings test honest about the decoding path rather than reaching past it.
+func RunWith(t *testing.T, r *rule.Rule, files map[string]string, settings any) []string {
+	t.Helper()
+	data, err := yaml.Marshal(settings)
+	if err != nil {
+		t.Fatalf("marshal settings: %v", err)
+	}
+	decode := func(dst any) error { return yaml.Unmarshal(data, dst) }
+	return formatFindings(r.Check(rule.NewContext(Load(t, files), decode)))
 }
 
 // Assert compares findings against expected substrings, one per finding, in

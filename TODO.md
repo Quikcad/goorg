@@ -6,7 +6,7 @@ Implementation plan, derived from the three specifications:
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
 - [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
-**27 specified rules: 22 syntax-tier, 5 type-tier.**
+**27 specified rules: 22 syntax-tier, 5 type-tier.** 6 implemented.
 
 Decisions that bind implementation are recorded in
 [`docs/decisions.md`](docs/decisions.md).
@@ -131,27 +131,32 @@ nothing, because no families are registered yet.
 
 ---
 
-## Phase 2 — `dir/` family
+## Phase 2 — `dir/` family — **complete**
 
-**Goal:** all 6 directory rules. Cheapest family, entirely syntactic, and the
-one that constrains this repository's own shape.
+**Goal:** all 6 directory rules, enabled on this repository.
 
-**Blocked by:** nothing. Phase 1 is complete.
+- [x] `pkg/rules/directory`, wired into `buildRuleSet`
+- [x] `dir/max-entries` — with glob overrides, most specific pattern winning
+- [x] `dir/top-level-layout`
+- [x] `dir/domain-layout` — `domains` / `packages` / `any` per root
+- [x] `dir/max-package-depth` — counts package directories only
+- [x] `dir/domain-has-no-go-files`
+- [x] `dir/embedded-assets`
+- [x] A directory is a package **iff** it contains `.go` files — the definition
+      the depth and asset rules share, so an asset directory below a package is
+      never mistaken for a subpackage
+- [x] `.goorg.yaml` enables all 6; `task dogfood` passes
+- [x] `pkg/lint/glob` extracted so rules and config share one path matcher
+      without rules importing config
 
-- [ ] Add `pkg/rules/directory` and wire `directory.Rules()` into
-      `buildRuleSet` in `internal/cli/ruleset.go`
-- [ ] `dir/max-entries` — `project.Dir.Entries` is already populated
-- [ ] `dir/top-level-layout`
-- [ ] `dir/domain-layout` — the `domains` / `packages` / `any` mode, per root
-- [ ] `dir/max-package-depth` — **counts package directories only**; asset
-      directories are exempt or the rule contradicts `dir/embedded-assets`
-- [ ] `dir/domain-has-no-go-files`
-- [ ] `dir/embedded-assets`
-- [ ] Resolve the asset-directory definition once, shared by the depth and
-      asset rules: a directory is a package **iff** it contains `.go` files
-- [ ] Enable all 6 on this repository and fix what they find
+**Ownership split.** `dir/domain-layout` and `dir/domain-has-no-go-files` both
+originally fired on a depth-1 directory holding Go files, producing two findings
+with contradictory advice for one mistake. They now split on whether packages
+sit beneath the directory. A regression test asserts no directory is reported by
+more than one rule.
 
-**Exit criteria:** goorg's own tree passes all 6.
+**Exit criteria met:** goorg's own tree passes all 6, and a deliberately
+violating tree produces exactly one finding per defect.
 
 ---
 

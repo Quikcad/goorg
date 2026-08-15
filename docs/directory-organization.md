@@ -331,6 +331,13 @@ several things use it.
 - This is what makes the domain layer in
   [`dir/domain-layout`](#dirdomain-layout) meaningful rather than decorative.
 - Under `packages` mode there are no domain directories, so the rule is inert.
+- **Ownership split with `dir/domain-layout`.** A depth-1 directory holding Go
+  files is exactly one defect, and which one depends on whether packages sit
+  beneath it. With child packages it is a domain polluted with code, and this
+  rule reports it. Without them it is a package that never got a domain, and
+  `dir/domain-layout` reports it. Both rules originally fired on both cases, so
+  one mistake produced two findings carrying contradictory advice — move the
+  code out, and move the directory in.
 
 ---
 

@@ -256,22 +256,62 @@ func TestRulesAndExplain(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("rules: exit = %d", code)
 	}
-	// Phase 1 ships no families, so the command must say so rather than print
-	// an empty table.
-	if !strings.Contains(stdout, "no rules are registered") {
-		t.Errorf("rules output = %q", stdout)
+	for _, want := range []string{"dir/domain-layout", "dir/max-entries", "syntax"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("rules output is missing %q:\n%s", want, stdout)
+		}
 	}
 
-	_, stderr, code := exec(t, nil, "explain", "dir/domain-layout")
-	if code != ExitError {
-		t.Errorf("explain of an unregistered rule: exit = %d, want %d", code, ExitError)
-	}
-	if !strings.Contains(stderr, "no rule") {
-		t.Errorf("stderr = %q", stderr)
-	}
+	t.Run("category filter", func(t *testing.T) {
+		stdout, _, code := exec(t, nil, "rules", "-root", root, "-category", "org")
+		if code != ExitOK {
+			t.Fatalf("exit = %d", code)
+		}
+		if strings.Contains(stdout, "dir/domain-layout") {
+			t.Errorf("-category=org listed a dir/ rule:\n%s", stdout)
+		}
+	})
 
-	if _, _, code := exec(t, nil, "rules", "-category", "nope"); code != ExitError {
-		t.Errorf("unknown category: exit = %d, want %d", code, ExitError)
+	t.Run("explain a real rule", func(t *testing.T) {
+		stdout, _, code := exec(t, nil, "explain", "dir/domain-layout")
+		if code != ExitOK {
+			t.Fatalf("exit = %d", code)
+		}
+		for _, want := range []string{"Rationale:", "To fix:", "in effect:", "tier:"} {
+			if !strings.Contains(stdout, want) {
+				t.Errorf("explain output is missing %q:\n%s", want, stdout)
+			}
+		}
+	})
+
+	t.Run("mistyped rule suggests the real one", func(t *testing.T) {
+		_, stderr, code := exec(t, nil, "explain", "dir/domain_layout")
+		if code != ExitError {
+			t.Errorf("exit = %d, want %d", code, ExitError)
+		}
+		if !strings.Contains(stderr, "no rule") {
+			t.Errorf("stderr = %q", stderr)
+		}
+	})
+
+	t.Run("unknown category exits 2", func(t *testing.T) {
+		if _, _, code := exec(t, nil, "rules", "-category", "nope"); code != ExitError {
+			t.Errorf("exit = %d, want %d", code, ExitError)
+		}
+	})
+}
+
+// TestInitListsRegisteredRules proves `goorg init` is generated from the live
+// rule set rather than a template that drifts.
+func TestInitListsRegisteredRules(t *testing.T) {
+	stdout, _, code := exec(t, nil, "init", "-stdout")
+	if code != ExitOK {
+		t.Fatalf("exit = %d", code)
+	}
+	for _, want := range []string{"dir/domain-layout:", "dir/max-entries:", "version: 1"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("generated config is missing %q:\n%s", want, stdout)
+		}
 	}
 }
 

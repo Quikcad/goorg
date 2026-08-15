@@ -19,4 +19,8 @@ type Dir struct {
 	// Entries is the number of immediate children, files and subdirectories
 	// together, after exclusions are applied.
 	Entries int
+	// NonGoFiles are the base names of the directory's immediate files that
+	// are not Go source, sorted. dir/embedded-assets reads these: a non-Go
+	// file beside .go source is an asset that belongs in a subdirectory.
+	NonGoFiles []string
 }

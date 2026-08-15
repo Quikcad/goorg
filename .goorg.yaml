@@ -1,0 +1,39 @@
+# goorg's own configuration. goorg checks itself in CI (`task dogfood`).
+#
+# A rule this project cannot live under is a rule that needs rethinking, so this
+# file stays close to the shipped defaults. Every deviation carries its reason.
+version: 1
+
+rules:
+  # directory organization — where code lives
+  dir/domain-layout: error
+  dir/domain-has-no-go-files: error
+  dir/embedded-assets: error
+  dir/max-entries: error
+  dir/max-package-depth: error
+  dir/top-level-layout: error
+
+settings:
+  dir/domain-layout:
+    # Domains in both roots, so goorg dogfoods its own strictest layout rule
+    # rather than leaving that path to fixtures alone. See docs/decisions.md D2.
+    pkg: domains
+    cmd: domains
+    # internal/ holds the CLI and the version stamp — application code with no
+    # importers, where a domain layer would be ceremony.
+    internal: any
+
+  dir/max-package-depth:
+    pkg: 2
+    cmd: 2
+    internal: 1
+
+  dir/max-entries:
+    # 20 is the shipped default, calibrated at roughly the standard library's
+    # p90. See docs/decisions.md D5.
+    limit: 20
+
+exclude:
+  # "**/testdata/**" is excluded automatically and is not repeated here.
+  - "bin/**"
+  - "dist/**"

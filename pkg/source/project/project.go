@@ -123,7 +123,10 @@ func (p *Project) Files() []*File {
 // visitDir records a directory and decides whether to descend into it.
 func (p *Project) visitDir(rel, path, name string, opts Options) error {
 	if rel == "." {
-		p.Dirs = append(p.Dirs, &Dir{Rel: ".", Name: filepath.Base(p.Root), Entries: countEntries(path)})
+		entries, nonGo := scanDir(path, rel, opts)
+		p.Dirs = append(p.Dirs, &Dir{
+			Rel: ".", Name: filepath.Base(p.Root), Entries: entries, NonGoFiles: nonGo,
+		})
 		return nil
 	}
 	// The Go toolchain itself ignores directories beginning with "." or "_",
@@ -134,11 +137,13 @@ func (p *Project) visitDir(rel, path, name string, opts Options) error {
 	if opts.Exclude != nil && opts.Exclude(rel) {
 		return filepath.SkipDir
 	}
+	entries, nonGo := scanDir(path, rel, opts)
 	p.Dirs = append(p.Dirs, &Dir{
-		Rel:     rel,
-		Name:    name,
-		Depth:   strings.Count(rel, "/") + 1,
-		Entries: countEntries(path),
+		Rel:        rel,
+		Name:       name,
+		Depth:      strings.Count(rel, "/") + 1,
+		Entries:    entries,
+		NonGoFiles: nonGo,
 	})
 	return nil
 }
@@ -193,22 +198,35 @@ func (p *Project) index(byDir map[string]*Package) {
 	diag.Sort(p.ParseErrors)
 }
 
-// countEntries counts a directory's immediate children, skipping the ones the
-// walker would never descend into so the count matches what a reader sees.
-func countEntries(path string) int {
-	entries, err := os.ReadDir(path)
+// scanDir reads a directory's immediate children once, returning both the
+// entry count and the non-Go file names.
+//
+// Entries skip what the walker would never descend into, so the count matches
+// what a reader sees in a listing rather than what is on disk.
+func scanDir(path, rel string, opts Options) (entries int, nonGo []string) {
+	children, err := os.ReadDir(path)
 	if err != nil {
-		return 0
+		return 0, nil
 	}
-	n := 0
-	for _, e := range entries {
-		name := e.Name()
+	for _, c := range children {
+		name := c.Name()
 		if alwaysSkip[name] || strings.HasPrefix(name, ".") {
 			continue
 		}
-		n++
+		childRel := name
+		if rel != "." {
+			childRel = rel + "/" + name
+		}
+		if opts.Exclude != nil && opts.Exclude(childRel) {
+			continue
+		}
+		entries++
+		if !c.IsDir() && !strings.HasSuffix(name, ".go") {
+			nonGo = append(nonGo, name)
+		}
 	}
-	return n
+	sort.Strings(nonGo)
+	return entries, nonGo
 }
 
 func countLines(src []byte) int {

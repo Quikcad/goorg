@@ -9,11 +9,15 @@ exactly the decisions that drift as a codebase and a team grow.
 
 goorg checks the layer above syntax:
 
-| Category | Rule prefix | What it enforces |
-| --- | --- | --- |
-| **Directory correctness** | `dir/` | Where code lives — tree shape, permitted directories, package name vs. path |
-| **Organizational correctness** | `org/` | How code is split across files — naming, size, package docs |
-| **Pattern correctness** | `pat/` | Recurring code shapes — signature and naming conventions |
+| Category | Rule prefix | What it enforces | Status |
+| --- | --- | --- | --- |
+| **Directory organization** | `dir/` | Where code lives — tree shape, domains, package depth | **6 rules, shipped** |
+| **File organization** | `org/` | How code is split across files — ordering, budgets, globals | specified |
+| **Logic organization** | `logic/` | How code is shaped — type size, interfaces, complexity | specified |
+| **Pattern correctness** | `pat/` | Naming conventions and declaration layout | specified |
+
+The standard itself lives in [`docs/`](docs/); decisions that bind the
+implementation are recorded in [`docs/decisions.md`](docs/decisions.md).
 
 It is a single static binary with one dependency, a meaningful exit code, and
 native GitHub Actions annotations. It never rewrites your source.
@@ -23,7 +27,7 @@ native GitHub Actions annotations. It never rewrites your source.
 ## Install
 
 ```sh
-go install github.com/Quikcad/goorg/cmd/goorg@latest
+go install github.com/Quikcad/goorg/cmd/lint/goorg@latest
 ```
 
 Or grab a binary from [Releases](https://github.com/Quikcad/goorg/releases).
@@ -34,7 +38,7 @@ Or grab a binary from [Releases](https://github.com/Quikcad/goorg/releases).
 goorg init          # write a starter .goorg.yaml
 goorg check ./...   # check the project
 goorg rules         # list every rule and the severity it runs at here
-goorg explain dir/cmd-layout
+goorg explain dir/domain-layout
 ```
 
 Running `goorg` with no arguments checks the current tree. Flags may appear
@@ -47,13 +51,22 @@ goorg check ./internal/... --format=json --fail-on=warning
 ### Output
 
 ```
-internal/httpclient/client.go:1:9: error: package client is in directory internal/httpclient; expected package httpclient [dir/package-matches-directory]
-  help: rename the package to httpclient, or move it to a directory named client
-internal/utils: error: directory internal/utils uses the banned name "utils" [dir/forbidden-directories]
-  help: name packages after what they provide; split the contents into purpose-named packages
+pkg/billing/types.go:1:9: error: domain directory pkg/billing contains 1 Go file [dir/domain-has-no-go-files]
+  help: move the code into a package within the domain, named for what it provides
+pkg/billing/invoice/schema.json: error: schema.json sits beside Go source [dir/embedded-assets]
+  help: move it into a subdirectory and embed that directory instead
+pkg/invoice/inv.go:1:9: error: package invoice sits directly under pkg/; it must belong to a domain [dir/domain-layout]
+  help: move it to pkg/<domain>/invoice/
 
-2 errors, 0 warnings
-rules: dir/forbidden-directories (1), dir/package-matches-directory (1)
+3 errors, 0 warnings
+rules: dir/domain-has-no-go-files (1), dir/domain-layout (1), dir/embedded-assets (1)
+```
+
+Suppress a single finding in source, with a reason — a directive without one is
+itself an error:
+
+```go
+//goorg:ignore dir/embedded-assets — vendored fixture, cannot be moved
 ```
 
 ### Exit codes
@@ -103,7 +116,7 @@ Inputs: `version`, `args`, `working-directory`, `config`, `fail-on`, `format`.
 ### Anywhere else
 
 ```sh
-go install github.com/Quikcad/goorg/cmd/goorg@latest
+go install github.com/Quikcad/goorg/cmd/lint/goorg@latest
 goorg check ./...
 ```
 
@@ -144,14 +157,17 @@ rules:
   # both.
   "*": warning
   dir/*: error
-  org/max-file-lines: off
+  dir/max-entries: off
 
 settings:
-  dir/forbidden-directories:
-    names: [src, util, utils, common, misc]
-  org/max-file-lines:
-    limit: 800
-    include_tests: false
+  dir/domain-layout:
+    pkg: domains
+    cmd: domains
+    internal: any
+  dir/max-entries:
+    limit: 20
+    overrides:
+      "docs/**": 50
 
 exclude:
   # Globs over root-relative paths. `**` matches any number of directories, and
@@ -175,33 +191,32 @@ because the disabled rule looks like a passing one.
 Run `goorg explain <rule>` for the rationale, examples, and options for any of
 these.
 
-### `dir/` — directory correctness
+### `dir/` — directory organization — **implemented**
 
 | Rule | Default | Enforces |
 | --- | --- | --- |
-| `dir/package-matches-directory` | error | Package name matches its directory, ignoring `-`/`_`; `v2/` resolves to the parent |
-| `dir/forbidden-directories` | error | No grab-bag names: `src`, `util`, `common`, `misc`, … |
-| `dir/cmd-layout` | error | `package main` lives in `cmd/<binary>/` and declares a `func main` |
+| `dir/domain-layout` | error | Packages sit at `<root>/<domain>/<package>`; per-root `domains` / `packages` / `any` |
+| `dir/domain-has-no-go-files` | error | A domain directory holds no `.go` files at all |
+| `dir/embedded-assets` | error | Non-Go files live in a subdirectory, never beside Go source |
+| `dir/max-entries` | warning | A directory holds at most N entries, files and subdirectories together |
+| `dir/max-package-depth` | error | No subdomains and no subpackages |
+| `dir/top-level-layout` | error | Only `pkg/`, `cmd/`, `internal/` may contain Go packages |
 
-### `org/` — organizational correctness
+### `org/`, `logic/`, `pat/` — specified, not yet implemented
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `org/file-naming` | error | Lowercase file names with `_` separators |
-| `org/max-file-lines` | warning | Files stay under a line limit (600) |
-| `org/package-doc` | warning | Exactly one package comment, opening with `Package <name>` |
+21 further rules are fully specified in [`docs/`](docs/) and scheduled in
+[TODO.md](TODO.md). `goorg rules` always lists what the binary you have actually
+runs.
 
-### `pat/` — pattern correctness
+### Tiers
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `pat/error-var-naming` | error | Sentinel errors are named `Err…` / `err…` |
-| `pat/context-first-param` | error | `context.Context` is the first parameter, named `ctx` |
-| `pat/receiver-naming` | error | One receiver name per type; never `this` or `self` |
+Every rule declares a tier. **Syntax** rules use `go/parser` only, so they work
+on a tree that does not compile — which is exactly when someone is mid-refactor
+and most wants a layout linter. **Type** rules need `go/types` and therefore a
+module that loads; `--syntax-only` skips them. When type loading fails goorg
+reports the gap in coverage and exits `2` rather than passing silently.
 
-Rules are syntactic — goorg parses but does not type-check, so it still reports
-on a tree that does not compile. That is a deliberate trade: a layout linter is
-most useful mid-refactor.
+Every `dir/` rule is syntax-tier.
 
 ---
 

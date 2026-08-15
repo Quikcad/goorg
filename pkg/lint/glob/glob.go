@@ -1,4 +1,11 @@
-package config
+// Package glob provides the two pattern matchers goorg uses.
+//
+// They are deliberately different. Paths are hierarchical, so `*` must not
+// cross a separator and `**` is needed to span segments. Rule IDs are flat
+// identifiers that merely contain a slash, so `*` must cross it — otherwise a
+// config key of `*` would match no rule at all, which is the one thing anyone
+// writing it cannot mean. Do not merge them.
+package glob
 
 import (
 	"path"
@@ -8,18 +15,13 @@ import (
 // MatchPath reports whether a slash-separated path matches a glob pattern.
 //
 // It extends path.Match with `**`, which matches any number of path segments
-// including none. path.Match alone never lets `*` cross a separator, which
-// makes recursive patterns impossible to express.
+// including none.
 func MatchPath(pattern, name string) bool {
 	return matchSegments(splitPath(pattern), splitPath(name))
 }
 
 // MatchRuleID reports whether a rule ID matches a config key pattern, where `*`
-// matches any run of characters and `?` matches exactly one.
-//
-// Unlike MatchPath, `*` here crosses the `/` in a rule ID, so a key of `*`
-// means every rule — the only thing anyone writing it could intend. The two
-// matchers are different on purpose and must not be merged.
+// matches any run of characters — including `/` — and `?` matches exactly one.
 func MatchRuleID(pattern, id string) bool {
 	// Iterative wildcard match, backtracking on the most recent `*`.
 	var patIdx, idIdx, mark int
@@ -45,6 +47,16 @@ func MatchRuleID(pattern, id string) bool {
 		patIdx++
 	}
 	return patIdx == len(pattern)
+}
+
+// Specificity scores how precisely a path pattern is written, so that the most
+// specific of several matching patterns can win. It is the number of literal
+// characters before the first wildcard.
+func Specificity(pattern string) int {
+	if i := strings.IndexAny(pattern, "*?"); i >= 0 {
+		return i
+	}
+	return len(pattern)
 }
 
 func splitPath(s string) []string {

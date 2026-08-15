@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/Quikcad/goorg/pkg/lint/diag"
+	"github.com/Quikcad/goorg/pkg/lint/glob"
 	"github.com/Quikcad/goorg/pkg/lint/rule"
 )
 
@@ -157,7 +158,7 @@ func (c *Config) Severity(r *rule.Rule) diag.Severity {
 		case key == r.ID:
 			spec = exactMatchSpecificity
 		case strings.ContainsAny(key, "*?"):
-			if MatchRuleID(key, r.ID) {
+			if glob.MatchRuleID(key, r.ID) {
 				spec = len(strings.TrimRight(key, "*?"))
 			}
 		}
@@ -200,7 +201,7 @@ func (c *Config) Excluder() func(string) bool {
 	}
 	return func(rel string) bool {
 		for _, p := range patterns {
-			if MatchPath(p, rel) {
+			if glob.MatchPath(p, rel) {
 				return true
 			}
 		}
@@ -221,7 +222,7 @@ func matchesAnyRule(key string, set *rule.Set) bool {
 		return false
 	}
 	for _, id := range set.IDs() {
-		if MatchRuleID(key, id) {
+		if glob.MatchRuleID(key, id) {
 			return true
 		}
 	}
