@@ -11,13 +11,13 @@ import (
 
 // Layout modes for dir/domain-layout.
 const (
-	// ModeDomains requires every package to belong to a domain:
+	// modeDomains requires every package to belong to a domain:
 	// <root>/<domain>/<package>.
-	ModeDomains = "domains"
-	// ModePackages forbids the domain layer: <root>/<package>.
-	ModePackages = "packages"
-	// ModeAny accepts either shape and disables the rule for that root.
-	ModeAny = "any"
+	modeDomains = "domains"
+	// modePackages forbids the domain layer: <root>/<package>.
+	modePackages = "packages"
+	// modeAny accepts either shape and disables the rule for that root.
+	modeAny = "any"
 )
 
 // defaultRoots are the top-level directories permitted to contain Go packages.

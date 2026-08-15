@@ -275,14 +275,16 @@ func f(ok bool) int {
 
 func TestFamilyIsWellFormed(t *testing.T) {
 	rules := Rules()
-	if len(rules) != 4 {
-		t.Fatalf("family has %d rules, want 4", len(rules))
+	if len(rules) != 7 {
+		t.Fatalf("family has %d rules, want 7", len(rules))
 	}
 	for _, r := range rules {
 		t.Run(r.ID, func(t *testing.T) {
 			ruletest.AssertWellFormed(t, r)
+			// Type-tier rules are exercised end to end through internal/cli,
+			// which has a real type-checked program to give them.
 			if r.Tier != rule.Syntax {
-				t.Errorf("tier = %v, want syntax", r.Tier)
+				return
 			}
 			ruletest.AssertDeterministic(t, r, conforming)
 			ruletest.AssertGofmtStable(t, r, conforming)

@@ -142,7 +142,7 @@ func Open(s string) (*Config, error) { return &Config{}, nil }
 			"go.mod":       "module x\n",
 			"pkg/a/b/b.go": "package b\n\ntype Config struct {\n\tA int\n}\n\nfunc Build() *Config { return &Config{} }\n",
 		}, factoryNamingSettings{
-			ValuePrefix: "Make", PointerPrefix: "New", Scope: ScopeAllFactories,
+			ValuePrefix: "Make", PointerPrefix: "New", Scope: scopeAllFactories,
 		})
 		ruletest.Assert(t, got, []string{"Build builds Config but carries no factory prefix"})
 	})

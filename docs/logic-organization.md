@@ -7,10 +7,8 @@ types chosen to model values, and the complexity of control flow.
 Where [`dir/`](directory-organization.md) constrains where code lives, `logic/`
 constrains what it looks like once you open the file.
 
-> **Status: 6 of 9 specified rules implemented** — the four `logic/` syntax-tier
-> rules and both `pat/` rules. `logic/interface-registry`,
-> `logic/any-should-be-generic` and `logic/ideal-numeric-type` need type
-> information and land in phase 5.
+> **Status: all 9 specified rules implemented.** The three type-tier ones need
+> the module to compile; `--syntax-only` skips them.
 >
 > [Specified rules](#specified-rules) are agreed in principle and written up in
 > full. [Proposed rules](#proposed-rules) need an approve/deny decision each —

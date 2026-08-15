@@ -12,6 +12,7 @@ import (
 	"github.com/Quikcad/goorg/pkg/lint/rule"
 	"github.com/Quikcad/goorg/pkg/lint/suppress"
 	"github.com/Quikcad/goorg/pkg/source/project"
+	"github.com/Quikcad/goorg/pkg/source/typed"
 )
 
 // Options controls a run.
@@ -19,6 +20,9 @@ type Options struct {
 	// Tiers are the rule tiers available. A rule whose tier is absent is
 	// counted as deferred rather than silently passing.
 	Tiers map[rule.Tier]bool
+	// Typed is the type-checked program, required when Tiers permits
+	// rule.Types. A Types rule is never invoked without it.
+	Typed *typed.Program
 }
 
 // Result is the outcome of a run.
@@ -64,9 +68,15 @@ func Run(p *project.Project, cfg *config.Config, set *rule.Set, opts Options) Re
 			res.Deferred++
 			continue
 		}
+		// A Types rule without a type-checked program would silently check
+		// nothing, which is the failure mode D1 exists to prevent.
+		if r.Tier == rule.Types && opts.Typed == nil {
+			res.Deferred++
+			continue
+		}
 		res.Ran++
 
-		ctx := rule.NewContext(p, cfg.DecoderFor(r.ID))
+		ctx := contextFor(r, p, opts.Typed, cfg.DecoderFor(r.ID))
 		for _, d := range r.Check(ctx) {
 			// Rules report what is wrong and where; the runner is what decides
 			// whether that is an error or a warning.
@@ -84,4 +94,12 @@ func Run(p *project.Project, cfg *config.Config, set *rule.Set, opts Options) Re
 	diag.Sort(res.Diagnostics)
 	res.Counts = diag.Summarize(res.Diagnostics)
 	return res
+}
+
+// contextFor builds the context a rule's tier requires.
+func contextFor(r *rule.Rule, p *project.Project, t *typed.Program, decode func(any) error) *rule.Context {
+	if r.Tier == rule.Types {
+		return rule.NewTypedContext(p, t, decode)
+	}
+	return rule.NewContext(p, decode)
 }

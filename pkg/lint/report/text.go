@@ -93,3 +93,10 @@ func ruleBreakdown(ds []diag.Diagnostic) string {
 	}
 	return "rules: " + strings.Join(parts, ", ")
 }
+
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}

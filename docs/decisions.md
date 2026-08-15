@@ -43,6 +43,20 @@ Roughly half the 50 proposals are the same.
   Retrofitting it onto a populated 22-rule registry costs far more than
   carrying it unused for three phases.
 
+**Measured, on goorg itself** (~6000 lines, 14 packages, warm cache):
+
+| Run | Time |
+| --- | --- |
+| `--syntax-only` (22 rules) | **20 ms** |
+| both tiers (27 rules) | **650 ms** |
+| `go vet ./...`, for scale | 475 ms |
+
+The type tier costs about 30× the syntax tier and lands in the same range as
+`go vet` — which is the honest comparison, since both type-check the module.
+That is the price of the five rules, and it is why the tier is only loaded when
+a type-tier rule is actually enabled: a project that switches them off pays
+nothing.
+
 → [The type-information problem](logic-organization.md#the-type-information-problem)
 
 ---

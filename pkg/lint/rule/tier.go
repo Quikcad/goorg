@@ -18,6 +18,8 @@ const (
 	Types
 )
 
+var _ fmt.Stringer = Syntax
+
 // String returns the spelling used in output and documentation.
 func (t Tier) String() string {
 	switch t {

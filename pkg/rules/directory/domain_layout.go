@@ -65,7 +65,7 @@ Configure in .goorg.yaml:
 	    cmd: domains
 	    internal: any`,
 	Check: func(c *rule.Context) []diag.Diagnostic {
-		s := domainLayoutSettings{Pkg: ModeDomains, Cmd: ModeDomains, Internal: ModeAny}
+		s := domainLayoutSettings{Pkg: modeDomains, Cmd: modeDomains, Internal: modeAny}
 		if err := c.Settings(&s); err != nil {
 			return settingsError(err)
 		}
@@ -106,9 +106,9 @@ Configure in .goorg.yaml:
 // or 0 when the rule does not apply to that root.
 func requiredDepth(mode string) (int, error) {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
-	case ModeDomains:
+	case modeDomains:
 		return 2, nil
-	case ModePackages, ModeAny, "":
+	case modePackages, modeAny, "":
 		return 0, nil
 	default:
 		return 0, fmt.Errorf("unknown mode %q (want domains, packages, or any)", mode)

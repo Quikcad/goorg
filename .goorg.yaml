@@ -35,6 +35,13 @@ rules:
   pat/expand-struct-definition: error
   pat/factory-naming: error
 
+  # type tier — these need the module to compile; --syntax-only skips them
+  logic/any-should-be-generic: warning
+  logic/ideal-numeric-type: warning
+  logic/interface-registry: error
+  org/consumer-locality: warning
+  org/global-file-scoped: error
+
 settings:
   dir/domain-layout:
     # Domains in both roots, so goorg dogfoods its own strictest layout rule

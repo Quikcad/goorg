@@ -18,6 +18,8 @@ const (
 	Error
 )
 
+var _ fmt.Stringer = Off
+
 // String returns the canonical spelling used in configuration and output.
 func (s Severity) String() string {
 	switch s {

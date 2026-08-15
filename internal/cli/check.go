@@ -7,7 +7,6 @@ import (
 
 	"github.com/Quikcad/goorg/pkg/lint/diag"
 	"github.com/Quikcad/goorg/pkg/lint/report"
-	"github.com/Quikcad/goorg/pkg/lint/rule"
 	"github.com/Quikcad/goorg/pkg/lint/runner"
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
@@ -107,8 +106,11 @@ Flags:
 		return ExitError
 	}
 
-	tiers := map[rule.Tier]bool{rule.Syntax: true, rule.Types: !f.syntaxOnly}
-	res := runner.Run(proj, cfg, set, runner.Options{Tiers: tiers})
+	plan := planTiers(root, cfg, set, f.syntaxOnly)
+	res := runner.Run(proj, cfg, set, runner.Options{Tiers: plan.tiers, Typed: plan.program})
+	res.Diagnostics = append(res.Diagnostics, plan.gaps...)
+	diag.Sort(res.Diagnostics)
+	res.Counts = diag.Summarize(res.Diagnostics)
 	if len(only) > 0 {
 		res.Diagnostics = filterPaths(res.Diagnostics, only)
 		res.Counts = diag.Summarize(res.Diagnostics)
@@ -121,6 +123,10 @@ Flags:
 	}
 
 	switch {
+	case plan.failed:
+		// A type tier that was wanted and could not run is goorg failing to
+		// do its job, not the project failing a check.
+		return ExitError
 	case res.Counts.Errors > 0:
 		return ExitFindings
 	case failOn == diag.Warning && res.Counts.Warnings > 0:

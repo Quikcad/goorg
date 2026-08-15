@@ -14,6 +14,8 @@ type Position struct {
 	Col  int
 }
 
+var _ fmt.Stringer = Position{}
+
 // String renders the position in the conventional file:line:col form, omitting
 // the parts that are not known.
 func (p Position) String() string {

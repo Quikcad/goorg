@@ -470,7 +470,7 @@ func TestNoDefectIsReportedTwice(t *testing.T) {
 		"pkg/a/b/b.go": "package b\n\nfunc helper() {}\n\nfunc Exported() {}\n\nconst limit = 10\n",
 	}
 	seen := map[string][]string{}
-	for _, r := range Rules() {
+	for _, r := range ruletest.SyntaxTier(Rules()) {
 		for _, finding := range ruletest.Run(t, r, violating) {
 			path, rest, _ := strings.Cut(finding, " ")
 			_ = rest
@@ -487,14 +487,16 @@ func TestNoDefectIsReportedTwice(t *testing.T) {
 
 func TestFamilyIsWellFormed(t *testing.T) {
 	rules := Rules()
-	if len(rules) != 10 {
-		t.Fatalf("family has %d rules, want 10", len(rules))
+	if len(rules) != 12 {
+		t.Fatalf("family has %d rules, want 12", len(rules))
 	}
 	for _, r := range rules {
 		t.Run(r.ID, func(t *testing.T) {
 			ruletest.AssertWellFormed(t, r)
+			// Type-tier rules are exercised end to end through internal/cli,
+			// which has a real type-checked program to give them.
 			if r.Tier != rule.Syntax {
-				t.Errorf("tier = %v, want syntax", r.Tier)
+				return
 			}
 			ruletest.AssertDeterministic(t, r, conforming)
 			ruletest.AssertGofmtStable(t, r, conforming)
@@ -509,7 +511,7 @@ func TestFamilyBuildsAsASet(t *testing.T) {
 }
 
 func TestConformingTreeIsSilentForEveryRule(t *testing.T) {
-	for _, r := range Rules() {
+	for _, r := range ruletest.SyntaxTier(Rules()) {
 		if got := ruletest.Run(t, r, conforming); len(got) != 0 {
 			t.Errorf("%s fired on a conforming tree: %v", r.ID, got)
 		}

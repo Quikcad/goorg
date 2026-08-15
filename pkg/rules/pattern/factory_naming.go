@@ -12,11 +12,11 @@ import (
 
 // Scopes for pat/factory-naming.
 const (
-	// ScopePrefixed checks only functions already named New* or Make*.
-	ScopePrefixed = "prefixed"
-	// ScopeAllFactories additionally requires every function returning a local
+	// scopePrefixed checks only functions already named New* or Make*.
+	scopePrefixed = "prefixed"
+	// scopeAllFactories additionally requires every function returning a local
 	// type to carry one of the prefixes.
-	ScopeAllFactories = "all-factories"
+	scopeAllFactories = "all-factories"
 )
 
 // factoryNamingSettings is the configurable surface of the rule.
@@ -82,14 +82,14 @@ Configure in .goorg.yaml:
 		s := factoryNamingSettings{
 			ValuePrefix:   "Make",
 			PointerPrefix: "New",
-			Scope:         ScopePrefixed,
+			Scope:         scopePrefixed,
 			AllowNames:    []string{"Parse", "Open", "Dial", "Must", "From", "Load", "Decode", "Unmarshal"},
 		}
 		if err := c.Settings(&s); err != nil {
 			return settingsError(err)
 		}
 		switch s.Scope {
-		case ScopePrefixed, ScopeAllFactories:
+		case scopePrefixed, scopeAllFactories:
 		default:
 			return settingsError(fmt.Errorf("unknown scope %q (want prefixed or all-factories)", s.Scope))
 		}
@@ -141,7 +141,7 @@ func checkFactory(c *rule.Context, fn *ast.FuncDecl, local map[string]bool, s *f
 	_, isPointer := result.(*ast.StarExpr)
 	switch {
 	case !hasValue && !hasPointer:
-		if s.Scope != ScopeAllFactories || allowed(name, s.AllowNames) {
+		if s.Scope != scopeAllFactories || allowed(name, s.AllowNames) {
 			return nil
 		}
 		want := s.ValuePrefix

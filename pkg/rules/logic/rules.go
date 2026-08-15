@@ -9,18 +9,23 @@ import (
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
-// Rules returns the logic/ family.
-//
-// Three further rules are specified but need type information and land in
-// phase 5: logic/interface-registry, logic/any-should-be-generic and
-// logic/ideal-numeric-type.
+// Rules returns the logic/ family: four syntax-tier rules and three type-tier
+// ones.
 func Rules() []*rule.Rule {
 	return []*rule.Rule{
+		anyShouldBeGeneric,
+		idealNumericType,
+		interfaceRegistry,
 		iotaCandidate,
 		maxConditionOperands,
 		maxObjectMembers,
 		preferGuardClause,
 	}
+}
+
+// isTestFile reports whether a root-relative path is a Go test file.
+func isTestFile(path string) bool {
+	return strings.HasSuffix(path, "_test.go")
 }
 
 // files returns the non-test files the family inspects.

@@ -65,10 +65,3 @@ func Write(w io.Writer, f Format, ds []diag.Diagnostic, opts Options) error {
 		return fmt.Errorf("unknown format %q", f)
 	}
 }
-
-func plural(n int, noun string) string {
-	if n == 1 {
-		return fmt.Sprintf("%d %s", n, noun)
-	}
-	return fmt.Sprintf("%d %ss", n, noun)
-}

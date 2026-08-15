@@ -6,7 +6,7 @@ Implementation plan, derived from the three specifications:
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
 - [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
-**27 specified rules: 22 syntax-tier, 5 type-tier.** All 22 syntax-tier rules implemented.
+**All 27 specified rules implemented** — 22 syntax-tier, 5 type-tier.
 
 Decisions that bind implementation are recorded in
 [`docs/decisions.md`](docs/decisions.md).
@@ -234,33 +234,57 @@ gap is real and recorded; closing it needs the type tier.
 
 ---
 
-## Phase 5 — Type tier
+## Phase 5 — Type tier — **complete**
 
-**Goal:** the 5 type-tier rules, and the loader they need.
+**Goal:** the five type-tier rules and the loader they need.
 
-**Blocked by:** Phase 4. Approved by
-[D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in).
+- [x] `pkg/source/typed` — a `go/packages` loader beside the syntax one
+- [x] Tier gating in the runner; a `Types` rule is never invoked without a
+      type-checked program
+- [x] **Load failure reports skipped coverage and exits 2**, never silent
+      success — including per-package failures, so one broken package cannot
+      look like a package that passed
+- [x] The type tier is only loaded when a type-tier rule is actually enabled
+- [x] `--syntax-only`, which still works on a tree that does not compile
+- [x] `logic/interface-registry` — near-miss first, with registry packages
+      loaded on demand
+- [x] `logic/any-should-be-generic`
+- [x] `logic/ideal-numeric-type` — `warning`, `allow_narrowing: false`
+- [x] `org/global-file-scoped`
+- [x] `org/consumer-locality`, narrow form
+- [x] Runtime measured and published in
+      [D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in)
 
-- [ ] `go/packages` loader alongside the syntax loader; `golang.org/x/tools`
-      becomes the first heavy dependency
-- [ ] Tier gating: syntax rules always run; type rules run only when loading
-      succeeds
-- [ ] **Load failure reports skipped coverage, never silent success.** A linter
-      that quietly checks nothing is worse than one that refuses to run.
-- [ ] `--syntax-only` flag for editor and pre-commit use
-- [ ] `logic/interface-registry` — near-miss detection first; it is the half
-      that catches real bugs
-- [ ] `logic/any-should-be-generic`
-- [ ] `logic/ideal-numeric-type` — ships as `warning`, never `error`;
-      `allow_narrowing: false` is not negotiable
-- [ ] `org/global-file-scoped`
-- [ ] `org/consumer-locality`, **narrow form only** — report only where the sole
-      consuming file is another file and the target is under every budget with
-      headroom. No what-if machinery. See Phase 7.
-- [ ] Measure the runtime cost against the syntax tier and publish both numbers
+**Measured on goorg itself:** 20 ms syntax-only, 650 ms both tiers, against
+475 ms for `go vet ./...`. The type tier costs ~30× the syntax tier and sits in
+the same range as vet, which is the honest comparison since both type-check.
 
-**Exit criteria:** both tiers pass on this repository; a deliberately broken
-dependency produces a skipped-coverage warning, not a pass.
+**Three rule bugs the dogfood run caught**, all now fixed:
+
+- `org/global-file-scoped` fired on every rule-definition table. It exists to
+  force *mutable* state behind an accessor, so it now grants the same
+  exemptions as `org/globals-singleton-only` — a definition table, a compiled
+  pattern and a sentinel error are none of them mutable.
+- `org/consumer-locality` proposed moving `newPackage` out of `package.go`,
+  which `org/type-cohesion` forbids. It now skips factories, and skips files
+  that export nothing, and skips exported declarations entirely — an exported
+  declaration's real consumers are in other packages, which a package-scoped
+  analysis cannot see.
+- `logic/interface-registry` resolved nothing in a module that did not import
+  `fmt`, which is exactly where a missing Stringer hides. Registry packages are
+  now loaded on demand.
+
+**Exit criteria met:** both tiers pass on this repository; a deliberately broken
+package produces a coverage gap rather than a pass.
+
+### Deferred out of Phase 5
+
+- [ ] `logic/ideal-numeric-type` only examines function parameters. Struct
+      fields and package-level variables have the same conversion pressure and
+      are not yet counted.
+- [ ] `org/consumer-locality` approximates "the target file has room" with a
+      declaration count rather than consulting the real budgets. That is
+      [Phase 7](#phase-7--the-what-if-pass).
 
 ---
 

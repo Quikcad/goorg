@@ -9,9 +9,9 @@ Where [`dir/`](directory-organization.md) constrains where a package lives and
 [`logic/`](logic-organization.md) constrains what a declaration looks like,
 `org/` constrains the file it lands in.
 
-> **Status: 10 of 12 rules implemented.** org/consumer-locality and
-> org/global-file-scoped need type information and land in phase 5. See
-> [Open questions](#open-questions).
+> **Status: all 12 rules implemented.** org/consumer-locality ships in its
+> narrow form; see [the what-if problem](#the-what-if-problem). Both type-tier
+> rules need the module to compile. See [Open questions](#open-questions).
 
 ---
 

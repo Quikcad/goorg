@@ -107,3 +107,19 @@ func AssertWellFormed(t *testing.T, r *rule.Rule) {
 		t.Error("nil Check")
 	}
 }
+
+func equal(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func join(items []string) string {
+	return strings.Join(items, "\n  ")
+}

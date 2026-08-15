@@ -5,12 +5,18 @@ import (
 
 	"github.com/Quikcad/goorg/pkg/lint/diag"
 	"github.com/Quikcad/goorg/pkg/source/project"
+	"github.com/Quikcad/goorg/pkg/source/typed"
 )
 
 // Context is what a rule is given to do its work.
 type Context struct {
-	// Project is the loaded source tree.
+	// Project is the parsed source tree. Always present.
 	Project *project.Project
+
+	// Typed is the type-checked view. It is nil for syntax-tier rules, and
+	// non-nil for type-tier ones — the runner only invokes a Types rule when
+	// loading succeeded, so a type rule may read this without a nil check.
+	Typed *typed.Program
 
 	// decode applies this rule's settings block onto a destination struct. It
 	// is nil when the project configures no settings for the rule. Keeping it
@@ -19,15 +25,22 @@ type Context struct {
 	decode func(any) error
 }
 
-// NewContext builds a Context. decode may be nil, in which case Settings is a
-// no-op and rules keep their zero-value defaults.
+// NewContext builds a Context for a syntax-tier rule. decode may be nil, in
+// which case Settings is a no-op and rules keep their zero-value defaults.
 func NewContext(p *project.Project, decode func(any) error) *Context {
 	return &Context{Project: p, decode: decode}
+}
+
+// NewTypedContext builds a Context for a type-tier rule.
+func NewTypedContext(p *project.Project, t *typed.Program, decode func(any) error) *Context {
+	return &Context{Project: p, Typed: t, decode: decode}
 }
 
 // Settings decodes this rule's configured settings into dst, which should point
 // at a struct pre-populated with the rule's defaults. When the project
 // configures nothing for the rule, dst is left untouched.
+//
+//goorg:ignore logic/any-should-be-generic — the decoder erases the type regardless
 func (c *Context) Settings(dst any) error {
 	if c.decode == nil {
 		return nil

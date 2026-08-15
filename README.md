@@ -233,15 +233,22 @@ these.
 | `pat/expand-struct-definition` | error | A struct with fields spans multiple lines, one field each |
 | `pat/factory-naming` | error | `Make` returns a value, `New` returns a pointer |
 
-### Specified, not yet implemented
+### Type tier — **implemented**
 
-Five type-tier rules — `logic/interface-registry`,
-`logic/any-should-be-generic`, `logic/ideal-numeric-type`,
-`org/consumer-locality` and `org/global-file-scoped` — are fully specified in
-[`docs/`](docs/) and land in phase 5. `goorg rules` always lists what the binary
-you have actually runs.
+These five need the module to compile. `--syntax-only` skips them.
+
+| Rule | Default | Enforces |
+| --- | --- | --- |
+| `logic/interface-registry` | error | Types are checked against a registry of interfaces, including near misses |
+| `logic/any-should-be-generic` | warning | `any` that only carries a value should be a type parameter |
+| `logic/ideal-numeric-type` | warning | A numeric parameter is the type its uses already speak |
+| `org/global-file-scoped` | error | A package variable is referenced only in its declaring file |
+| `org/consumer-locality` | warning | A declaration used from one other file belongs in it |
 
 ### Tiers
+
+On goorg itself the syntax tier takes 20 ms and both tiers take 650 ms, against
+475 ms for `go vet ./...` — the honest comparison, since both type-check.
 
 Every rule declares a tier. **Syntax** rules use `go/parser` only, so they work
 on a tree that does not compile — which is exactly when someone is mid-refactor
@@ -249,7 +256,8 @@ and most wants a layout linter. **Type** rules need `go/types` and therefore a
 module that loads; `--syntax-only` skips them. When type loading fails goorg
 reports the gap in coverage and exits `2` rather than passing silently.
 
-Every `dir/` rule is syntax-tier.
+The type tier is only loaded when a type-tier rule is actually enabled, so a
+project that switches them off pays nothing for them.
 
 ---
 

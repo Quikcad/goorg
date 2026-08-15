@@ -12,13 +12,13 @@ import (
 
 // Modes for org/interface-own-file.
 const (
-	// ModeOwnFile allows one interface per file and no other type.
-	ModeOwnFile = "own-file"
-	// ModeSeparate lets interfaces share a file with each other but not with
+	// modeOwnFile allows one interface per file and no other type.
+	modeOwnFile = "own-file"
+	// modeSeparate lets interfaces share a file with each other but not with
 	// struct declarations.
-	ModeSeparate = "separate"
-	// ModeOff disables the rule.
-	ModeOff = "off"
+	modeSeparate = "separate"
+	// modeOff disables the rule.
+	modeOff = "off"
 )
 
 // interfaceOwnFileSettings is the configurable surface of the rule.
@@ -64,15 +64,15 @@ Configure in .goorg.yaml:
 	    mode: own-file
 	    min_methods: 1`,
 	Check: func(c *rule.Context) []diag.Diagnostic {
-		s := interfaceOwnFileSettings{Mode: ModeOwnFile, MinMethods: 1}
+		s := interfaceOwnFileSettings{Mode: modeOwnFile, MinMethods: 1}
 		if err := c.Settings(&s); err != nil {
 			return settingsError(err)
 		}
 		mode := strings.ToLower(strings.TrimSpace(s.Mode))
 		switch mode {
-		case ModeOff:
+		case modeOff:
 			return nil
-		case ModeOwnFile, ModeSeparate:
+		case modeOwnFile, modeSeparate:
 		default:
 			return settingsError(fmt.Errorf("unknown mode %q (want own-file, separate, or off)", s.Mode))
 		}
@@ -91,7 +91,7 @@ Configure in .goorg.yaml:
 						interfaces[0].Name.Name, plural(len(others), "other type")),
 					Help: "give the interface a file of its own",
 				})
-			case mode == ModeOwnFile && len(interfaces) > 1:
+			case mode == modeOwnFile && len(interfaces) > 1:
 				out = append(out, diag.Diagnostic{
 					Position: c.Pos(interfaces[1]),
 					Message: fmt.Sprintf("file declares %s",

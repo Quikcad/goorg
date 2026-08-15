@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -55,14 +54,33 @@ func Load(t *testing.T, files map[string]string) *project.Project {
 // "path:line: message" strings, sorted.
 func Run(t *testing.T, r *rule.Rule, files map[string]string) []string {
 	t.Helper()
+	requireSyntaxTier(t, r)
 	return formatFindings(r.Check(rule.NewContext(Load(t, files), nil)))
+}
+
+// SyntaxTier filters a family down to the rules this harness can run.
+//
+// A type-tier rule needs a type-checked program, which an in-memory fixture
+// does not have; family-wide assertions use this so adding a type rule does not
+// silently start nil-dereferencing inside the harness.
+func SyntaxTier(rules []*rule.Rule) []*rule.Rule {
+	var out []*rule.Rule
+	for _, r := range rules {
+		if r.Tier == rule.Syntax {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // RunWith executes a rule over a fixture tree with explicit settings, which are
 // round-tripped through YAML exactly as a real .goorg.yaml would be. That keeps
 // a settings test honest about the decoding path rather than reaching past it.
+//
+//goorg:ignore logic/any-should-be-generic — yaml.Marshal erases the type regardless
 func RunWith(t *testing.T, r *rule.Rule, files map[string]string, settings any) []string {
 	t.Helper()
+	requireSyntaxTier(t, r)
 	data, err := yaml.Marshal(settings)
 	if err != nil {
 		t.Fatalf("marshal settings: %v", err)
@@ -84,18 +102,10 @@ func formatFindings(ds []diag.Diagnostic) []string {
 	return out
 }
 
-func equal(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
+func requireSyntaxTier(t *testing.T, r *rule.Rule) {
+	t.Helper()
+	if r.Tier != rule.Syntax {
+		t.Fatalf("%s is %s-tier; the fixture harness has no type information. "+
+			"Filter with ruletest.SyntaxTier, or exercise it through internal/cli.", r.ID, r.Tier)
 	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func join(items []string) string {
-	return strings.Join(items, "\n  ")
 }
