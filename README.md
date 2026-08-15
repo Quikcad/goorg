@@ -233,6 +233,11 @@ these.
 | `pat/expand-struct-definition` | error | A struct with fields spans multiple lines, one field each |
 | `pat/factory-naming` | error | `Make` returns a value, `New` returns a pointer |
 
+One rule ships **off**: `logic/boolean-parameter` objects to a bare `bool` on an
+exported function, which is a real readability cost but a common and not-wrong
+shape. Enable it with `logic/boolean-parameter: warning` when the team wants the
+convention.
+
 ### Type tier — **implemented**
 
 These five need the module to compile. `--syntax-only` skips them.

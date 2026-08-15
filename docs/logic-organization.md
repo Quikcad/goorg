@@ -705,21 +705,21 @@ we want it in one tool rather than that it is unavailable.
 
 - [x] 1. **`logic/boolean-field-count`** · syntax — More than N `bool` fields in one struct. Three booleans are eight states, most of which are invalid; a named state enum makes the legal set explicit.
 - [x] 2. **`logic/stringly-typed-enum`** · syntax — A run of `string` constants used as an enumeration without a named string type. `type Status string` costs one line and makes the set checkable.
-- [x] 3. **`logic/primitive-obsession`** · types — The same primitive appears N+ times across a package's signatures in the same role (`userID string`, `orgID string`). Named types make transposed arguments a compile error.
-- [x] 4. **`logic/duration-as-number`** · types — An `int`/`int64` named `*Timeout`, `*Interval`, `*TTL` that should be `time.Duration`. Unit confusion in timeouts is a recurring production bug.
+- [ ] 3. **`logic/primitive-obsession`** · types — The same primitive appears N+ times across a package's signatures in the same role (`userID string`, `orgID string`). Named types make transposed arguments a compile error.
+- [ ] 4. **`logic/duration-as-number`** · types — An `int`/`int64` named `*Timeout`, `*Interval`, `*TTL` that should be `time.Duration`. Unit confusion in timeouts is a recurring production bug.
 - [ ] 5. **`logic/map-as-struct`** · syntax — `map[string]string`/`map[string]any` with a fixed set of literal keys used as an ad-hoc record. A struct gets field checking and documentation.
 - [x] 6. **`logic/exported-embedded-mutex`** · types — An exported struct embedding `sync.Mutex` promotes `Lock`/`Unlock` into its public API, letting callers break the type's invariants. Name the field.
 - [ ] 7. **`logic/struct-field-alignment`** · types — Field ordering wastes padding beyond N bytes. Genuinely useful only for types allocated in bulk; noisy elsewhere. (**exists**: `fieldalignment`)
-- [x] 8. **`logic/zero-value-unusable`** · types — A type whose zero value panics or misbehaves, with no constructor documented. Go code assumes `var x T` works.
+- [ ] 8. **`logic/zero-value-unusable`** · types — A type whose zero value panics or misbehaves, with no constructor documented. Go code assumes `var x T` works.
 - [x] 9. **`logic/pointer-to-slice-or-map`** · syntax — `*[]T` or `*map[K]V` in a signature. Almost always a misunderstanding of Go's reference semantics.
 - [ ] 10. **`logic/mutable-global`** · syntax — Package-level `var` that is not a sentinel error or a genuine constant. Global mutable state defeats parallel tests and hides coupling.
 
 ### Interfaces and abstraction
 
-- [ ] 11. **`logic/interface-size`** · syntax — An interface declaring more than N methods. Large interfaces are hard to implement and impossible to fake in a test.
+- [x] 11. **`logic/interface-size`** · syntax — An interface declaring more than N methods. Large interfaces are hard to implement and impossible to fake in a test.
 - [x] 12. **`logic/interface-at-consumer`** · types — An interface declared in the package that implements it rather than the one that consumes it. Producer-side interfaces force every consumer into one abstraction.
 - [ ] 13. **`logic/single-impl-interface`** · types — An interface with exactly one implementation and no test double. Often speculative indirection; sometimes a deliberate seam, so this should be a warning.
-- [x] 14. **`logic/accept-interfaces-return-structs`** · types — An exported function returning an interface where a concrete type would do. Returning interfaces hides fields the caller may legitimately need.
+- [ ] 14. **`logic/accept-interfaces-return-structs`** · types — An exported function returning an interface where a concrete type would do. Returning interfaces hides fields the caller may legitimately need.
 - [ ] 15. **`logic/unused-interface-method`** · types — A method on a project-local interface that no call site invokes through that interface. Dead surface that every implementer still has to write.
 - [ ] 16. **`logic/interface-name-suffix`** · syntax — Enforce or forbid the `-er` convention consistently. Worth having only if the house standard picks a side.
 - [x] 17. **`logic/empty-interface-field`** · syntax — A struct field typed `any`. Same erasure problem as `any` parameters, but longer-lived.
@@ -728,30 +728,30 @@ we want it in one tool rather than that it is unavailable.
 
 - [x] 18. **`logic/unused-type-parameter`** · types — A type parameter appearing exactly once in a signature. It is not doing generic work; it is an unconstrained hole.
 - [x] 19. **`logic/constraint-too-wide`** · types — `[T any]` where the body requires `comparable` or `cmp.Ordered`. A tight constraint documents the contract and improves the error message at the call site.
-- [x] 20. **`logic/single-instantiation-generic`** · types — A generic function or type instantiated with exactly one type argument across the whole module. Generality nobody asked for.
+- [ ] 20. **`logic/single-instantiation-generic`** · types — A generic function or type instantiated with exactly one type argument across the whole module. Generality nobody asked for.
 - [ ] 21. **`logic/reflection-over-generics`** · types — `reflect` used in a way a type parameter would replace. Reflection is slower and moves errors to runtime.
 
 ### Constants and enums
 
-- [ ] 22. **`logic/enum-missing-string`** · types — An `iota` enum type with no `String()` method. Without it, every log line and error message prints an integer.
-- [x] 23. **`logic/enum-switch-exhaustive`** · types — A `switch` over an enum type missing cases and lacking a `default`. Adding an enum value should not silently skip a branch. (**exists**: `exhaustive`)
-- [ ] 24. **`logic/enum-zero-value-unnamed`** · syntax — An `iota` enum starting at 0 with no constant for the zero value, so the zero value is a valid-looking invalid state. Add an explicit `Unknown`/`Unspecified`.
+- [x] 22. **`logic/enum-missing-string`** · types — An `iota` enum type with no `String()` method. Without it, every log line and error message prints an integer.
+- [ ] 23. **`logic/enum-switch-exhaustive`** · types — A `switch` over an enum type missing cases and lacking a `default`. Adding an enum value should not silently skip a branch. (**exists**: `exhaustive`)
+- [x] 24. **`logic/enum-zero-value-unnamed`** · syntax — An `iota` enum starting at 0 with no constant for the zero value, so the zero value is a valid-looking invalid state. Add an explicit `Unknown`/`Unspecified`.
 - [ ] 25. **`logic/magic-number`** · syntax — An unnamed numeric literal outside a small allowlist (`0`, `1`, `2`, powers of two). High false-positive rate; needs a generous allowlist to be tolerable.
 - [x] 26. **`logic/duplicate-const-value`** · syntax — Two constants in one block sharing a value. Usually a botched hand-renumbering — the exact failure `logic/iota-candidate` prevents.
 
 ### Numeric correctness
 
 - [x] 27. **`logic/float-equality`** · types — `==` or `!=` between floating-point values. Almost always wrong; wants an epsilon comparison.
-- [ ] 28. **`logic/lossy-conversion`** · types — A narrowing numeric conversion (`int64`→`int32`, `int`→`uint`) with no preceding range check. Silent truncation and sign flips.
-- [ ] 29. **`logic/unsigned-underflow`** · types — Subtraction on an unsigned type without a guard. `uint(0) - 1` is a very large number, not a negative one.
+- [x] 28. **`logic/lossy-conversion`** · types — A narrowing numeric conversion (`int64`→`int32`, `int`→`uint`) with no preceding range check. Silent truncation and sign flips.
+- [x] 29. **`logic/unsigned-underflow`** · types — Subtraction on an unsigned type without a guard. `uint(0) - 1` is a very large number, not a negative one.
 - [x] 30. **`logic/integer-division-to-float`** · types — Integer division whose result is immediately converted to a float. `float64(a/b)` truncates before converting; the author meant `float64(a)/float64(b)`.
 
 ### Control flow and complexity
 
 - [x] 31. **`logic/max-nesting-depth`** · syntax — Block nesting beyond N levels. The single best predictor of a function nobody wants to touch.
 - [ ] 32. **`logic/cyclomatic-complexity`** · syntax — Independent paths through a function above N. (**exists**: `gocyclo`)
-- [x] 33. **`logic/cognitive-complexity`** · syntax — Weights nesting more heavily than branch count, so it tracks readability better than cyclomatic complexity. (**exists**: `gocognit`)
-- [x] 34. **`logic/else-after-return`** · syntax — An `else` block after a branch that returns. The `else` is redundant and adds a level. (**exists**: `golint`/`revive`)
+- [ ] 33. **`logic/cognitive-complexity`** · syntax — Weights nesting more heavily than branch count, so it tracks readability better than cyclomatic complexity. (**exists**: `gocognit`)
+- [ ] 34. **`logic/else-after-return`** · syntax — An `else` block after a branch that returns. The `else` is redundant and adds a level. (**exists**: `golint`/`revive`)
 - [x] 35. **`logic/if-chain-to-switch`** · syntax — Three or more `else if` branches testing the same operand. A `switch` states the shape and enables exhaustiveness checking.
 - [x] 36. **`logic/negated-condition`** · syntax — `if !cond { A } else { B }`. Flipping removes the negation and reads forward.
 - [x] 37. **`logic/single-case-switch`** · syntax — A `switch` with one case. Either an `if`, or a missing case.
@@ -760,16 +760,16 @@ we want it in one tool rather than that it is unavailable.
 - [x] 40. **`logic/max-function-lines`** · syntax — Function length cap. Blunt but effective; measures at a finer grain than a whole-file budget.
 - [x] 41. **`logic/max-function-params`** · syntax — More than N parameters. Past four, call sites become positional puzzles; wants a config struct.
 - [x] 42. **`logic/max-return-values`** · syntax — More than N results, `error` excluded. Callers cannot remember which is which; wants a named struct.
-- [x] 43. **`logic/naked-return`** · syntax — A bare `return` in a function longer than N lines, where the reader can no longer see what is being returned. (**exists**: `nakedret`)
-- [x] 44. **`logic/loop-invariant-computation`** · types — An expression inside a loop that does not depend on the loop. Hoisting it is clearer and usually faster.
-- [ ] 45. **`logic/boolean-parameter`** · syntax — A `bool` parameter on an exported function. `Fetch(id, true)` is unreadable at the call site; wants two functions or an option type.
+- [ ] 43. **`logic/naked-return`** · syntax — A bare `return` in a function longer than N lines, where the reader can no longer see what is being returned. (**exists**: `nakedret`)
+- [ ] 44. **`logic/loop-invariant-computation`** · types — An expression inside a loop that does not depend on the loop. Hoisting it is clearer and usually faster.
+- [x] 45. **`logic/boolean-parameter`** · syntax — A `bool` parameter on an exported function. `Fetch(id, true)` is unreadable at the call site; wants two functions or an option type.
 
 ### Errors
 
-- [x] 46. **`logic/unwrapped-error`** · types — `fmt.Errorf` including an error via `%v` instead of `%w`, breaking `errors.Is`/`errors.As` for every caller above. (**exists**: `errorlint`)
-- [x] 47. **`logic/error-equality`** · types — `err == ErrFoo` rather than `errors.Is(err, ErrFoo)`. Fails the moment anyone in the chain wraps. (**exists**: `errorlint`)
+- [ ] 46. **`logic/unwrapped-error`** · types — `fmt.Errorf` including an error via `%v` instead of `%w`, breaking `errors.Is`/`errors.As` for every caller above. (**exists**: `errorlint`)
+- [ ] 47. **`logic/error-equality`** · types — `err == ErrFoo` rather than `errors.Is(err, ErrFoo)`. Fails the moment anyone in the chain wraps. (**exists**: `errorlint`)
 - [x] 48. **`logic/panic-outside-main`** · types — `panic` in a package outside `cmd/`. A library that panics takes the caller's process down over a decision that was theirs to make.
-- [x] 49. **`logic/error-string-style`** · syntax — Error strings that are capitalized or end in punctuation, which reads badly once wrapped into a longer chain. (**exists**: `staticcheck ST1005`)
+- [ ] 49. **`logic/error-string-style`** · syntax — Error strings that are capitalized or end in punctuation, which reads badly once wrapped into a longer chain. (**exists**: `staticcheck ST1005`)
 - [x] 50. **`logic/context-in-struct`** · types — `context.Context` stored as a struct field rather than passed as a parameter. Ties the context's lifetime to the object's, defeating cancellation.
 
 ---

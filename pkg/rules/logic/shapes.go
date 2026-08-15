@@ -105,7 +105,10 @@ var booleanParameter = &rule.Rule{
 	Category: rule.Logic,
 	Tier:     rule.Syntax,
 	Summary:  "a bool parameter on an exported function is unreadable at the call site",
-	Default:  diag.Warning,
+	// Opt-in. The objection is real but the shape is common and not wrong, and
+	// on a real codebase this fired 71 times — too often to be the default
+	// position. See docs/decisions.md D7.
+	Default: diag.Off,
 	Doc: `An exported function may not take a bare bool parameter.
 
 	Fetch(id, true)                  violation — true what?
@@ -122,7 +125,16 @@ To fix: split into two functions named for what they do, or take an options
 struct where the field name labels the value at the call site.
 
 Unexported functions are exempt: their call sites are in the same package as the
-signature, so the lookup is cheap.`,
+signature, so the lookup is cheap.
+
+This rule ships off. Enable it with
+
+	rules:
+	  logic/boolean-parameter: warning
+
+when the team has decided it wants the convention. The objection is real, but a
+bare bool parameter is common enough that firing by default reads as noise
+rather than as advice.`,
 	Check: func(c *rule.Context) []diag.Diagnostic {
 		var out []diag.Diagnostic
 		for _, f := range files(c) {

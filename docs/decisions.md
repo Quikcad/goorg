@@ -339,7 +339,26 @@ detection strategy sharper than currently sketched before it earns a place.
 
 **Totals:** 10 denied, 28 approved (17 syntax + 11 types), 12 deferred.
 
-### Unreconciled: D7 versus the ticked list
+### Reconciled at v0.1.0
+
+**D7 governs.** The checkbox list in
+[`logic-organization.md`](logic-organization.md#proposed-rules) has been
+corrected to match, so the ticks and the binary now say the same thing. The
+seven `golangci-lint` overlaps stay denied — running both tools is cheaper than
+maintaining eight known checks — and the six deferred rules stay deferred until
+each has a detection strategy sharper than the sketch.
+
+**`logic/boolean-parameter` ships off.** It was approved and implemented, but on
+the Quikcad monorepo it fired 71 times, and the shape it objects to is common
+and not wrong — only unreadable at the call site. A rule that fires that often
+on healthy code reads as noise rather than as advice, so it is opt-in:
+
+	rules:
+	  logic/boolean-parameter: warning
+
+That leaves 54 rules on by default and one available.
+
+### The divergence it replaced
 
 The checkbox list in [`logic-organization.md`](logic-organization.md#proposed-rules)
 was ticked independently and **approves 35 rules, not 28**. The two disagree on
@@ -352,8 +371,8 @@ list is a real signal and has not been overwritten.
 | Ticked, D7 deferred | 3, 4, 8, 14, 20, 44 | Accepted on merit, deferred on false-positive cost. Ticking them means building them anyway, and each needs a sharper detection strategy first. |
 | Unticked, D7 approved | 11, 22, 24, 28, 29, 45 | Includes 28 `lossy-conversion` and 29 `unsigned-underflow`, which are correctness bugs rather than style. |
 
-**Blocks Phase 6 only.** Reconcile before that phase starts; nothing earlier
-depends on it.
+Recorded because the disagreement was real and the resolution was a decision,
+not a tidy-up.
 
 Deferred rules are not rejected on merit — each needs a sharper detection
 strategy than currently sketched before it earns a place. They stay in

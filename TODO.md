@@ -365,41 +365,42 @@ repository with more single-consumer helpers than goorg has.
 
 ---
 
-## Phase 8 — Distribution
+## Phase 8 — Distribution — **complete**
 
-**Goal:** make it consumable.
+**Goal:** make it consumable. **v0.1.0 is released.**
 
-- [x] `.goreleaser.yaml` built `./cmd/goorg`, a package that had not existed
-      since [D2](docs/decisions.md#d2--goorg-adopts-domains-in-both-pkg-and-cmd).
-      The first tagged release would have failed. Fixed, and CI gained a
-      `release-config` job that builds the target and checks the archive-name
-      templates in `.goreleaser.yaml` and `action.yml` still agree.
-- [x] Adoption guide — [docs/adoption.md](docs/adoption.md)
-- [x] The `.golangci.yml` covering the nine denied **exists** rules, so the gap
-      stays deliberate *(carried over from phase 6)*
-- [x] `README.md` rewritten against the shipped rule set
-- [x] `CLAUDE.md` rewritten against the real engine, including both tiers,
-      `Placement`, and the calibrate-don't-guess rule for budgets
-- [ ] **First tagged release.** Needs a GitHub remote and a pushed tag, which
-      is yours to do:
-
-      git remote add origin git@github.com:Quikcad/goorg.git
-      git push -u origin main
-      git tag -a v0.1.0 -m "first release" && git push origin v0.1.0
-
-- [ ] **Verify `action.yml` against that release.** The download logic is
-      checked statically but has never fetched a real asset. Run the action in
-      a scratch repository once v0.1.0 exists.
-
-### Before tagging
-
-- [ ] Re-measure the budgets against a real Quikcad repository. Every default
-      is calibrated against the Go standard library, which is a proxy for
-      "typical Go" and not for yours —
+- [x] Fixed three release-path defects, all found by the guard added here:
+      `.goreleaser.yaml` built `./cmd/goorg` (gone since D2), the release notes
+      published that same dead install path, and `checksums:` is not a
+      goreleaser v2 field — it rejected the whole config. Any one of them would
+      have failed the first release.
+- [x] CI `release-config` job: builds whatever `.goreleaser.yaml` names, runs
+      `goreleaser check`, and asserts the archive-name templates in
+      `.goreleaser.yaml` and `action.yml` still agree
+- [x] Remote added, `main` pushed, CI green across Linux/macOS/Windows ×
+      Go 1.25/1.26
+- [x] **v0.1.0 tagged and released** — six platform archives plus checksums
+- [x] **`action.yml` verified against the real release**: its install step was
+      replayed verbatim, fetched `goorg_0.1.0_linux_amd64.tar.gz`, and the
+      extracted binary reported 55 rules and ran clean
+- [x] `go install github.com/Quikcad/goorg/cmd/lint/goorg@v0.1.0` works
+- [x] Adoption guide — [docs/adoption.md](docs/adoption.md), with the observed
+      finding distribution from a real codebase
+- [x] The `.golangci.yml` covering the nine denied **exists** rules *(carried
+      over from phase 6)*
+- [x] `README.md` and `CLAUDE.md` rewritten against what shipped
+- [x] Budgets re-measured against `Quikcad/workspace` —
       [D5](docs/decisions.md#d5--budget-defaults-calibrated-against-a-measured-corpus).
-- [ ] Reconcile [D7](docs/decisions.md#d7--disposition-of-the-50-proposals)
-      against the ticked list in `logic-organization.md`. They disagree on 19
-      of 50; the shipped set follows D7.
+      Quikcad code is tighter than the standard library on every metric, but
+      every budget still produces 5–61 findings on 623 files. The defaults
+      stand.
+- [x] D7 reconciled against the ticked list; D7 governs, and
+      `logic/boolean-parameter` is now opt-in after firing 71 times on real
+      code
+
+**Unreleased change.** `logic/boolean-parameter` defaulting to `off` landed
+after v0.1.0 was tagged, so it is on `main` and not in the release. Worth a
+v0.1.1 whenever convenient.
 
 ---
 

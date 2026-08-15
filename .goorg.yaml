@@ -43,7 +43,8 @@ rules:
   org/global-file-scoped: error
   # rules approved in D7
   logic/boolean-field-count: warning
-  logic/boolean-parameter: warning
+  # Opt-in; see docs/decisions.md D7.
+  logic/boolean-parameter: "off"
   logic/constraint-too-wide: warning
   logic/context-in-struct: error
   logic/duplicate-const-value: error
