@@ -25,14 +25,19 @@ import (
 // rather than silently ignoring keys.
 const SchemaVersion = 1
 
-// FileNames are the config file names recognised in a project root, in
-// preference order.
-var FileNames = []string{".goorg.yaml", ".goorg.yml"}
+// exactMatchSpecificity is higher than any glob's literal prefix can be, so an
+// exact rule ID always wins.
+const exactMatchSpecificity = 1 << 20
+
+// configFileNames are the config file names recognised in a project root, in
+// preference order. It is unexported because a package-level slice is mutable
+// by every importer; FileNames hands out a copy.
+var configFileNames = []string{".goorg.yaml", ".goorg.yml"}
 
 // BuiltinExclude is always applied, ahead of any user configuration. testdata
 // holds fixtures that are deliberately wrong; linting them would report the
 // very violations they exist to reproduce.
-var BuiltinExclude = []string{"**/testdata/**"}
+var builtinExclude = []string{"**/testdata/**"}
 
 // Config is the parsed contents of .goorg.yaml.
 type Config struct {
@@ -62,21 +67,6 @@ type Config struct {
 // every rule at its own default severity.
 func Default() *Config {
 	return &Config{Version: SchemaVersion}
-}
-
-// Discover looks for a config file in dir. It returns "" with no error when
-// there is none, since running without a config is a supported mode.
-func Discover(dir string) (string, error) {
-	for _, name := range FileNames {
-		p := filepath.Join(dir, name)
-		switch _, err := os.Stat(p); {
-		case err == nil:
-			return p, nil
-		case !errors.Is(err, os.ErrNotExist):
-			return "", fmt.Errorf("stat %s: %w", p, err)
-		}
-	}
-	return "", nil
 }
 
 // Load reads and validates a config file against the active rule set.
@@ -187,8 +177,8 @@ func (c *Config) DecoderFor(id string) func(any) error {
 // Excluder returns a predicate over root-relative slash paths, combining the
 // built-in exclusions with the configured ones.
 func (c *Config) Excluder() func(string) bool {
-	patterns := make([]string, 0, len(BuiltinExclude)+len(c.Exclude))
-	patterns = append(patterns, BuiltinExclude...)
+	patterns := make([]string, 0, len(builtinExclude)+len(c.Exclude))
+	patterns = append(patterns, builtinExclude...)
 	patterns = append(patterns, c.Exclude...)
 	for i, p := range patterns {
 		// A pattern with no separator applies at any depth, matching the
@@ -209,9 +199,26 @@ func (c *Config) Excluder() func(string) bool {
 	}
 }
 
-// exactMatchSpecificity is higher than any glob's literal prefix can be, so an
-// exact rule ID always wins.
-const exactMatchSpecificity = 1 << 20
+// FileNames returns the config file names recognised in a project root, in
+// preference order.
+func FileNames() []string {
+	return append([]string(nil), configFileNames...)
+}
+
+// Discover looks for a config file in dir. It returns "" with no error when
+// there is none, since running without a config is a supported mode.
+func Discover(dir string) (string, error) {
+	for _, name := range configFileNames {
+		p := filepath.Join(dir, name)
+		switch _, err := os.Stat(p); {
+		case err == nil:
+			return p, nil
+		case !errors.Is(err, os.ErrNotExist):
+			return "", fmt.Errorf("stat %s: %w", p, err)
+		}
+	}
+	return "", nil
+}
 
 // matchesAnyRule reports whether a config key names or globs at least one rule.
 func matchesAnyRule(key string, set *rule.Set) bool {

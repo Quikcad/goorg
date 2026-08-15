@@ -14,6 +14,13 @@ import (
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
+// Options controls a run.
+type Options struct {
+	// Tiers are the rule tiers available. A rule whose tier is absent is
+	// counted as deferred rather than silently passing.
+	Tiers map[rule.Tier]bool
+}
+
 // Result is the outcome of a run.
 type Result struct {
 	// Diagnostics are sorted by position and rule ID.
@@ -34,13 +41,6 @@ type Result struct {
 // Failed reports whether the run found anything at error severity.
 func (r Result) Failed() bool {
 	return r.Counts.Errors > 0
-}
-
-// Options controls a run.
-type Options struct {
-	// Tiers are the rule tiers available. A rule whose tier is absent is
-	// counted as deferred rather than silently passing.
-	Tiers map[rule.Tier]bool
 }
 
 // Run executes every enabled rule and returns the combined diagnostics.

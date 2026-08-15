@@ -6,7 +6,7 @@ Implementation plan, derived from the three specifications:
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
 - [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
-**27 specified rules: 22 syntax-tier, 5 type-tier.** 6 implemented.
+**27 specified rules: 22 syntax-tier, 5 type-tier.** 16 implemented.
 
 Decisions that bind implementation are recorded in
 [`docs/decisions.md`](docs/decisions.md).
@@ -160,38 +160,44 @@ violating tree produces exactly one finding per defect.
 
 ---
 
-## Phase 3 — `org/` family, syntax subset
+## Phase 3 — `org/` family, syntax subset — **complete**
 
-**Goal:** 10 of 12 file-organization rules. `org/consumer-locality` and
-`org/global-file-scoped` are type-tier and wait for Phase 5.
+**Goal:** 10 of 12 file-organization rules, enabled on this repository.
+`org/consumer-locality` and `org/global-file-scoped` are type-tier, phase 5.
 
-**Blocked by:** Phase 2 (shares the package model).
+- [x] `org/member-order` — sections, per-type contiguity, separate var blocks
+- [x] `org/private-functions-last`
+- [x] `org/singleton-layout`
+- [x] `org/max-functions-per-file`
+- [x] `org/max-public-functions`
+- [x] `org/max-private-functions`
+- [x] `org/type-cohesion`
+- [x] `org/interface-own-file`
+- [x] `org/globals-singleton-only`
+- [x] `org/singleton-instance-func`
+- [x] Precedence implemented as shared classifiers rather than per-rule
+      special cases: `decls.go` sections every declaration, `filekind.go`
+      recognises a singleton file as a distinct shape
+- [x] Globals exemption classifiers, including `embed.FS` and the addressed
+      composite literal `&T{...}`
+- [x] `.goorg.yaml` enables all 10; `task dogfood` passes
 
-- [ ] `org/member-order` — needs the enum classifier, shared with
-      `logic/iota-candidate`
-- [ ] `org/private-functions-last`
-- [ ] `org/singleton-layout`
-- [ ] `org/max-functions-per-file`
-- [ ] `org/max-public-functions`
-- [ ] `org/max-private-functions`
-- [ ] `org/type-cohesion`
-- [ ] `org/interface-own-file`
-- [ ] `org/globals-singleton-only`
-- [ ] `org/singleton-instance-func`
-- [ ] **Implement the precedence table** as a real mechanism, not as per-rule
-      special cases. Two conflicts are guaranteed, not hypothetical:
-      `singleton-layout` inverts `private-functions-last`, and `type-cohesion`
-      is unsatisfiable alongside the file budgets unless methods are excluded
-      from them (`count_methods: false`).
-      → [Precedence](docs/file-organization.md#precedence)
-- [ ] Build the globals exemption classifiers — sentinel errors, interface
-      assertions, compiled patterns, lookup tables, `embed.FS`. **The exemption
-      list is the rule.** Go has no immutable composite constant, so without
-      these the rule fires on unavoidable idiomatic code and gets switched off.
-- [ ] Enable all 10 here and fix what they find
+**Two spec refinements the implementation forced**, both recorded in
+`docs/file-organization.md`:
 
-**Exit criteria:** goorg's own tree passes all 10; no rule pair produces
-contradictory findings on any fixture.
+- A var whose initializer references a local type sinks to that type's section.
+  Vars-before-types is the letter of `member-order`; introduce-before-use is its
+  point, and `var defaultRule = &Rule{...}` cannot precede `type Rule`.
+- Factories are exempt from `private-functions-last`. A factory belongs beside
+  its type, and the exported-first split would drag it away.
+
+**Exit criteria met:** goorg passes all 16 rules on itself, and a violating
+tree produces one finding per defect.
+
+### Deferred out of Phase 3
+
+- [ ] `org/member-order`'s `grouping: by-kind` mode is accepted in config but
+      only `per-type` is enforced. Nothing uses `by-kind` yet.
 
 ---
 

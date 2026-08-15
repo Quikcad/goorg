@@ -9,8 +9,9 @@ Where [`dir/`](directory-organization.md) constrains where a package lives and
 [`logic/`](logic-organization.md) constrains what a declaration looks like,
 `org/` constrains the file it lands in.
 
-> **Status: specification only.** Nothing here is implemented. Rule IDs, config
-> keys, and defaults are proposals. See [Open questions](#open-questions).
+> **Status: 10 of 12 rules implemented.** org/consumer-locality and
+> org/global-file-scoped need type information and land in phase 5. See
+> [Open questions](#open-questions).
 
 ---
 
@@ -168,7 +169,13 @@ few of them anyway.
 #### Detection
 
 Syntactic. Classify each top-level `Decl` by kind, then check the sequence of
-kinds is non-decreasing in the configured order. Enum detection reuses
+kinds is non-decreasing in the configured order.
+
+**A var that depends on a local type sinks to that type's section.** The order
+exists so a file reads top to bottom without meeting an undefined name, and
+hoisting `var defaultRule = &Rule{...}` above `type Rule` would defeat exactly
+that. Vars-before-types is the letter of the rule; introduce-before-use is its
+point, and where they conflict the point wins. Enum detection reuses
 `logic/iota-candidate`'s classifier: a `TypeSpec` for a named integer or string
 type together with a `const` block of that type.
 
@@ -222,6 +229,11 @@ after an unexported one.
 - Overridden by [`org/singleton-layout`](#orgsingleton-layout), where the
   unexported `instance` function is required to appear *before* the exported
   accessors.
+- **Factories are exempt.** A factory belongs beside the type it builds, which
+  [`org/member-order`](#orgmember-order) places it at. Applying the
+  exported-first split to factories would drag an exported factory away from
+  its own type to sit above an unexported factory for a different one — the
+  same reasoning that puts `org/type-cohesion` above the budgets.
 
 ---
 

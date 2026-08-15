@@ -34,11 +34,6 @@ type Options struct {
 	ShowHelp bool
 }
 
-// Formats lists every supported format, for help text and validation.
-func Formats() []Format {
-	return []Format{Text, GitHub, JSON}
-}
-
 // ParseFormat validates a --format value.
 func ParseFormat(s string) (Format, error) {
 	want := strings.ToLower(strings.TrimSpace(s))
@@ -50,6 +45,11 @@ func ParseFormat(s string) (Format, error) {
 		names = append(names, string(f))
 	}
 	return "", fmt.Errorf("unknown format %q (want one of: %s)", s, strings.Join(names, ", "))
+}
+
+// Formats lists every supported format, for help text and validation.
+func Formats() []Format {
+	return []Format{Text, GitHub, JSON}
 }
 
 // Write renders diagnostics in the requested format.

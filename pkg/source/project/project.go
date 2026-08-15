@@ -26,6 +26,13 @@ var alwaysSkip = map[string]bool{
 	"vendor":       true,
 }
 
+// Options controls loading.
+type Options struct {
+	// Exclude reports whether a root-relative slash path should be skipped.
+	// Returning true for a directory prunes the whole subtree. It may be nil.
+	Exclude func(rel string) bool
+}
+
 // Project is a loaded source tree.
 type Project struct {
 	// Root is the absolute path to the project root.
@@ -42,13 +49,6 @@ type Project struct {
 	// as diagnostics rather than aborting the run, so one broken file does not
 	// hide findings in the rest of the tree.
 	ParseErrors []diag.Diagnostic
-}
-
-// Options controls loading.
-type Options struct {
-	// Exclude reports whether a root-relative slash path should be skipped.
-	// Returning true for a directory prunes the whole subtree. It may be nil.
-	Exclude func(rel string) bool
 }
 
 // Load walks root and parses every Go file that survives filtering.

@@ -42,7 +42,7 @@ Flags:
 		return ExitOK
 	}
 
-	path := filepath.Join(*root, config.FileNames[0])
+	path := filepath.Join(*root, config.FileNames()[0])
 	if !*force {
 		switch _, err := os.Stat(path); {
 		case err == nil:

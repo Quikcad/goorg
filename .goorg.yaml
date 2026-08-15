@@ -13,6 +13,18 @@ rules:
   dir/max-package-depth: error
   dir/top-level-layout: error
 
+  # file organization — how code is split across files
+  org/globals-singleton-only: error
+  org/interface-own-file: error
+  org/max-functions-per-file: error
+  org/max-private-functions: error
+  org/max-public-functions: error
+  org/member-order: error
+  org/private-functions-last: error
+  org/singleton-instance-func: error
+  org/singleton-layout: error
+  org/type-cohesion: error
+
 settings:
   dir/domain-layout:
     # Domains in both roots, so goorg dogfoods its own strictest layout rule
@@ -32,6 +44,19 @@ settings:
     # 20 is the shipped default, calibrated at roughly the standard library's
     # p90. See docs/decisions.md D5.
     limit: 20
+
+  org/max-functions-per-file:
+    limit: 15
+    # Must stay false, or a type with more methods than this cannot satisfy
+    # both this rule and org/type-cohesion. See docs/file-organization.md.
+    count_methods: false
+
+  org/max-public-functions:
+    limit: 6
+
+  org/max-private-functions:
+    limit: 5
+    when_file_has_exports: true
 
 exclude:
   # "**/testdata/**" is excluded automatically and is not repeated here.

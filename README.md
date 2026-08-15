@@ -12,7 +12,7 @@ goorg checks the layer above syntax:
 | Category | Rule prefix | What it enforces | Status |
 | --- | --- | --- | --- |
 | **Directory organization** | `dir/` | Where code lives — tree shape, domains, package depth | **6 rules, shipped** |
-| **File organization** | `org/` | How code is split across files — ordering, budgets, globals | specified |
+| **File organization** | `org/` | How code is split across files — ordering, budgets, globals | **10 rules, shipped** |
 | **Logic organization** | `logic/` | How code is shaped — type size, interfaces, complexity | specified |
 | **Pattern correctness** | `pat/` | Naming conventions and declaration layout | specified |
 
@@ -202,9 +202,24 @@ these.
 | `dir/max-package-depth` | error | No subdomains and no subpackages |
 | `dir/top-level-layout` | error | Only `pkg/`, `cmd/`, `internal/` may contain Go packages |
 
-### `org/`, `logic/`, `pat/` — specified, not yet implemented
+### `org/` — file organization — **implemented**
 
-21 further rules are fully specified in [`docs/`](docs/) and scheduled in
+| Rule | Default | Enforces |
+| --- | --- | --- |
+| `org/member-order` | error | Enums, vars, interfaces, types with their factories and methods, then functions |
+| `org/private-functions-last` | error | Unexported functions after every exported one |
+| `org/singleton-layout` | error | Singleton files: state, `instance`, then exported accessors |
+| `org/singleton-instance-func` | error | Construction guarded by `sync.Once`, never in `init` |
+| `org/globals-singleton-only` | error | Package-level vars only as singleton state |
+| `org/type-cohesion` | error | A type, its factory and its methods in one file |
+| `org/interface-own-file` | warning | An interface gets a file of its own |
+| `org/max-functions-per-file` | error | At most N functions per file |
+| `org/max-public-functions` | error | At most N exported functions per file |
+| `org/max-private-functions` | error | Few unexported helpers beside an exported API |
+
+### `logic/`, `pat/` — specified, not yet implemented
+
+11 further rules are fully specified in [`docs/`](docs/) and scheduled in
 [TODO.md](TODO.md). `goorg rules` always lists what the binary you have actually
 runs.
 

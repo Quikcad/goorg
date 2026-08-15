@@ -7,6 +7,8 @@ import "runtime/debug"
 // version is overridden at build time via:
 //
 //	-ldflags '-X github.com/Quikcad/goorg/internal/buildinfo.version=v1.2.3'
+//
+//goorg:ignore org/globals-singleton-only — -X can only target a package-level string
 var version = ""
 
 // Version returns the best available description of this build: the link-time

@@ -61,6 +61,27 @@ func (d *Directive) Covers(x diag.Diagnostic) bool {
 	return x.Line >= d.Start && x.Line <= d.End
 }
 
+// parse splits a directive comment into its rule ID and reason.
+func parse(text, path string, line int) (*Directive, error) {
+	rest := strings.TrimSpace(strings.TrimPrefix(text, directivePrefix))
+	if rest == "" {
+		return nil, fmt.Errorf("suppression names no rule")
+	}
+
+	id, reason, _ := strings.Cut(rest, " ")
+	reason = strings.TrimSpace(reason)
+	for _, sep := range reasonSeparators {
+		if trimmed, ok := strings.CutPrefix(reason, sep); ok {
+			reason = strings.TrimSpace(trimmed)
+			break
+		}
+	}
+	if reason == "" {
+		return nil, fmt.Errorf("suppression of %s gives no reason", id)
+	}
+	return &Directive{RuleID: id, Reason: reason, Path: path, Line: line}, nil
+}
+
 // Set holds every directive found in a project.
 type Set struct {
 	byPath map[string][]*Directive
@@ -159,27 +180,6 @@ func (s *Set) suppress(x diag.Diagnostic) bool {
 		}
 	}
 	return false
-}
-
-// parse splits a directive comment into its rule ID and reason.
-func parse(text, path string, line int) (*Directive, error) {
-	rest := strings.TrimSpace(strings.TrimPrefix(text, directivePrefix))
-	if rest == "" {
-		return nil, fmt.Errorf("suppression names no rule")
-	}
-
-	id, reason, _ := strings.Cut(rest, " ")
-	reason = strings.TrimSpace(reason)
-	for _, sep := range reasonSeparators {
-		if trimmed, ok := strings.CutPrefix(reason, sep); ok {
-			reason = strings.TrimSpace(trimmed)
-			break
-		}
-	}
-	if reason == "" {
-		return nil, fmt.Errorf("suppression of %s gives no reason", id)
-	}
-	return &Directive{RuleID: id, Reason: reason, Path: path, Line: line}, nil
 }
 
 // coverage decides which lines a directive protects.

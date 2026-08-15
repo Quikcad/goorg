@@ -3,6 +3,7 @@ package cli
 import (
 	"github.com/Quikcad/goorg/pkg/lint/rule"
 	"github.com/Quikcad/goorg/pkg/rules/directory"
+	"github.com/Quikcad/goorg/pkg/rules/organization"
 )
 
 // buildRuleSet composes every rule family into the set goorg runs.
@@ -13,10 +14,10 @@ import (
 //
 //	directory.Rules(), organization.Rules(), logic.Rules(), pattern.Rules()
 //
-// Families land here as they are written; organization, logic and pattern are
-// still to come.
+// Families land here as they are written; logic and pattern are still to come.
 func buildRuleSet() (*rule.Set, error) {
 	return rule.NewSet(
 		directory.Rules(),
+		organization.Rules(),
 	)
 }
