@@ -6,6 +6,28 @@ that only goes down.
 
 ---
 
+## What this looks like in practice
+
+goorg's first run on the `Quikcad/workspace` monorepo — 623 files — reported
+3391 errors and 357 warnings. The distribution is the point:
+
+| Rule | Findings | Share |
+| --- | --- | --- |
+| `org/member-order` | 1805 | 48% |
+| `org/private-functions-last` | 822 | 22% |
+| `dir/top-level-layout` | 200 | 5% |
+| `pat/expand-struct-definition` | 145 | 4% |
+| `org/globals-singleton-only` | 106 | 3% |
+| everything else (30 rules) | 670 | 18% |
+
+Seventy percent of that number is two rules about declaration order, and
+reordering declarations changes no behaviour at all. The genuinely structural
+work — packages in the wrong root, globals that should be singletons — is a few
+hundred findings hiding behind it.
+
+That is why the number is not the thing to look at. Clear the mechanical rules
+first and the remaining list is one an afternoon can triage.
+
 ## The shape of the problem
 
 goorg reports two kinds of thing, and they need different treatment:
