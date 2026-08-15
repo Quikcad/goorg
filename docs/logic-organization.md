@@ -44,8 +44,8 @@ Of the nine rules you specified, three are type-tier:
 | `logic/ideal-numeric-type` | **types** |
 | `logic/prefer-guard-clause` | syntax |
 | `logic/max-condition-operands` | syntax |
-| `logic/factory-naming` | syntax |
-| `logic/expand-struct-definition` | syntax |
+| `pat/factory-naming` | syntax |
+| `pat/expand-struct-definition` | syntax |
 
 Consequences worth deciding on deliberately:
 
@@ -524,7 +524,7 @@ condition.
 
 ---
 
-### `logic/factory-naming`
+### `pat/factory-naming`
 
 **A factory returning a value type is named `Make*`. A factory returning a
 pointer is named `New*`.**
@@ -550,7 +550,7 @@ error)` is a pointer factory. The first non-`error` result decides.
 
 ```yaml
 settings:
-  logic/factory-naming:
+  pat/factory-naming:
     value_prefix: Make
     pointer_prefix: New
     # Interfaces are neither value nor pointer at the syntax level. Callers
@@ -618,7 +618,7 @@ prepared to curate the allowlist.
 
 ---
 
-### `logic/expand-struct-definition`
+### `pat/expand-struct-definition`
 
 **A struct type with at least one field is written across multiple lines, one
 field per line.**
@@ -646,7 +646,7 @@ idiom that must never be flagged.
 
 ```yaml
 settings:
-  logic/expand-struct-definition:
+  pat/expand-struct-definition:
     # Apply to anonymous struct types too — table-test row types, struct-typed
     # variables, struct-typed parameters.
     include_anonymous: true
@@ -786,19 +786,21 @@ we want it in one tool rather than that it is unavailable.
    coverage rather than pass silently. That means a repository with a broken
    dependency gets findings it cannot act on, which is annoying but honest.
 
-3. **Do we reimplement what `golangci-lint` already does?** Eight proposals are
+3. **Do we reimplement what `golangci-lint` already does?** Nine proposals are
    tagged **exists**. Reimplementing gives one tool, one config, one output
    format; not reimplementing keeps goorg small and focused on what nothing else
-   checks. A defensible position is to deny all eight and document the
+   checks. A defensible position is to deny all nine and document the
    `golangci-lint` config that covers them.
+   → Recommended in [D7](decisions.md#d7--recommendations-on-the-50-proposals):
+   deny all nine.
 
 4. **Is `logic/` the right family name,** alongside the existing `dir/`, `org/`
    and `pat/`? Several proposals here (naming, error style) arguably belong in
    `pat/`, and the boundary between "pattern correctness" and "logic
    organization" is not currently sharp.
-   `logic/expand-struct-definition` sharpens the question: it is a rule about
+   `pat/expand-struct-definition` sharpens the question: it is a rule about
    declaration *layout*, adjacent to `gofmt`, and it sits oddly in a family
-   otherwise concerned with structure and complexity. `logic/factory-naming` is
+   otherwise concerned with structure and complexity. `pat/factory-naming` is
    a naming convention, which is squarely `pat/` territory. Both are specified
    here because that is where they were raised; moving them is cheap now and
    expensive once written.
@@ -811,11 +813,11 @@ we want it in one tool rather than that it is unavailable.
 
 6. **Should any rule offer autofix?** `logic/iota-candidate`,
    `logic/else-after-return`, `logic/negated-condition` and especially
-   `logic/expand-struct-definition` are mechanical rewrites — the last one is
+   `pat/expand-struct-definition` are mechanical rewrites — the last one is
    purely positional and could not get it wrong. goorg currently promises never
    to modify source; a `--fix` flag would be a deliberate reversal of that.
 
-7. **How does `logic/factory-naming` classify an imported result type?**
+7. **How does `pat/factory-naming` classify an imported result type?**
    Deciding whether `func NewThing() Thing` returns a value or an interface
    requires knowing what `Thing` is. When it is declared in the same package
    that is a syntactic lookup; when it is imported it is not. Options: skip

@@ -305,7 +305,7 @@ a named type together with a `sync.Once`. From there, check the position of the
 ```yaml
 settings:
   org/max-functions-per-file:
-    limit: 12
+    limit: 15
     # Methods are counted against the owning type's budget
     # (logic/max-object-members), not against the file's.
     count_methods: false
@@ -344,7 +344,7 @@ Syntactic.
 ```yaml
 settings:
   org/max-public-functions:
-    limit: 5
+    limit: 6
     count_methods: false
 ```
 
@@ -378,7 +378,7 @@ helper file, and helper files are allowed to be helper files.
 ```yaml
 settings:
   org/max-private-functions:
-    limit: 3
+    limit: 5
     # Only applies to files that also export something.
     when_file_has_exports: true
     count_methods: false
@@ -427,7 +427,7 @@ Syntactic.
 ```yaml
 settings:
   org/type-cohesion:
-    # Factories are identified by logic/factory-naming's classifier: a
+    # Factories are identified by pat/factory-naming's classifier: a
     # function whose first non-error result is the type.
     include_factories: true
     # Build-constrained files legitimately split a type's methods by platform.
@@ -449,7 +449,7 @@ whole change at once.
 #### Detection
 
 Syntactic. Group `FuncDecl`s by receiver type name and compare against the file
-holding the `TypeSpec`. Factory identification reuses `logic/factory-naming`.
+holding the `TypeSpec`. Factory identification reuses `pat/factory-naming`.
 
 #### Interactions
 

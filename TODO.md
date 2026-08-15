@@ -4,9 +4,12 @@ Implementation plan, derived from the three specifications:
 
 - [`docs/directory-organization.md`](docs/directory-organization.md) — `dir/`, 6 rules
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
-- [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/`, 9 specified + 50 proposed
+- [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
 **27 specified rules: 22 syntax-tier, 5 type-tier.**
+
+Decisions that bind implementation are recorded in
+[`docs/decisions.md`](docs/decisions.md).
 
 Phases are ordered by dependency, cheapest first. Each ends with goorg passing
 its own new rules — see [Ground rules](#ground-rules).
@@ -20,7 +23,7 @@ is done under.
 
 **gofmt is authoritative on whitespace.** goorg complements `gofmt`, never
 competes with it. No rule may report on anything `gofmt` would rewrite, and no
-rule's fix may be undone by running `gofmt`. `logic/expand-struct-definition` is
+rule's fix may be undone by running `gofmt`. `pat/expand-struct-definition` is
 the rule closest to this line: `gofmt` preserves whichever struct form the
 author wrote, which is exactly why the rule has room to exist — but that has to
 be *proved*, not assumed. See the conformance harness in
@@ -40,56 +43,41 @@ not accumulated behind a flag.
 
 ---
 
-## Phase 0 — Decisions
+## Phase 0 — Decisions — **complete**
 
-**Goal:** settle what blocks code. Everything below is a decision, not an
-implementation.
+**Goal:** settle what blocks code.
 
-**Blocked by:** nothing. Blocks everything.
+Recorded in [`docs/decisions.md`](docs/decisions.md). Summary:
 
-- [ ] **Do we take on `go/types`?** Determines whether 5 of 27 specified rules
-      and roughly half the proposals are buildable at all. Recommended: two
-      explicit tiers, syntax always, types opt-in.
-      → [The type-information problem](docs/logic-organization.md#the-type-information-problem)
-- [ ] **Settle family names before any rule ships.** Rule IDs appear in every
-      consumer's `.goorg.yaml` and are contractual. Open specifically:
-      is `logic/` right alongside `dir/`/`org/`/`pat/`, and do
-      `logic/factory-naming` (a naming convention) and
-      `logic/expand-struct-definition` (declaration layout) belong in `pat/`?
-      Moving them is free now and breaking later.
-- [ ] **Decide goorg's own repository layout, under goorg's own `dir/` rules.**
-      This is not cosmetic — see [the dogfooding
-      conflict](#the-dogfooding-conflict) below.
-- [ ] **Decide the budget numbers.** Every limit in all three documents is a
-      guess (12 functions/file, 5 exported, 3 unexported, 20 directory entries,
-      12 struct fields). Measure against real Quikcad repositories first: a
-      limit below the existing median makes a rule unadoptable.
-- [ ] **Approve or deny the 50 logic proposals.** Only affects Phase 6.
-      → [Proposed rules](docs/logic-organization.md#proposed-rules)
-- [ ] **Decide the suppression syntax.** No document specifies how to silence a
-      finding on one line, and every linter needs it. Proposal:
-      `//goorg:ignore <rule-id> — <reason>`, reason mandatory.
-- [ ] **Decide whether `_test.go` files are in scope.** Drafted as exempt
-      throughout `org/`, which leaves the largest files in many packages
-      unchecked.
-      → [file-organization open question 7](docs/file-organization.md#open-questions)
+- [x] **Take on `go/types`?** Yes — two tiers, types opt-in, `Tier` field on
+      every rule from the first commit. → [D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in)
+- [x] **Family names.** Four: `dir/`, `org/`, `logic/`, `pat/`.
+      `factory-naming` and `expand-struct-definition` moved to `pat/`; the
+      renames are applied across all three specifications.
+      → [D3](docs/decisions.md#d3--four-rule-families)
+- [x] **goorg's own layout.** Domains in both `pkg/` and `cmd/`, `internal: any`.
+      → [D2](docs/decisions.md#d2--goorg-adopts-domains-in-both-pkg-and-cmd)
+- [x] **Budget numbers.** Measured against 3437 hand-written standard-library
+      files rather than guessed. Three defaults revised.
+      → [D5](docs/decisions.md#d5--budget-defaults-calibrated-against-a-measured-corpus)
+- [x] **Suppression syntax.** `//goorg:ignore <rule-id> — <reason>`, reason
+      mandatory. → [D4](docs/decisions.md#d4--inline-suppression-requires-a-reason)
+- [x] **`_test.go` scope.** Checked by structure rules, exempt from budgets and
+      ordering. → [D6](docs/decisions.md#d6--test-files-are-checked-by-structure-rules-exempt-from-budgets)
+- [ ] **The 50 proposals.** Recommendations written — 10 deny, 28 approve,
+      12 defer — but **awaiting sign-off**. Blocks Phase 6 only.
+      → [D7](docs/decisions.md#d7--recommendations-on-the-50-proposals)
 
-### The dogfooding conflict
+### Still to re-measure
 
-goorg cannot dogfood `dir/domain-layout: domains` unless goorg itself adopts
-domains. Under that mode `cmd/goorg/main.go` is a violation — a package sitting
-directly under `cmd/` with no domain layer. The options:
+[D5](docs/decisions.md#d5--budget-defaults-calibrated-against-a-measured-corpus)
+calibrated against the Go standard library, which is old, unusually low-level,
+and written under conventions predating most of the ecosystem. It is a proxy for
+"typical Go", not for Quikcad's code.
 
-- **Adopt domains in this repo** — `cmd/tooling/goorg/main.go`. goorg genuinely
-  dogfoods its own strictest layout rule.
-- **Configure `cmd: packages` for this repo** — the current tree stays, and the
-  `domains` path is never exercised by dogfooding. It then has to be covered by
-  fixtures alone.
-
-Same question for `internal/` versus `pkg/`: putting the rule engine in `pkg/`
-makes goorg embeddable as a library and exercises the domain rules; keeping it
-in `internal/` keeps the API surface at zero. Decide both before Phase 1, since
-the answer determines where every file goes.
+- [ ] Re-run the measurement against a real Quikcad repository before the first
+      release, and revise the defaults if the distributions differ materially
+- [ ] Keep the measurement tool in-tree so the numbers stay reproducible
 
 ---
 
@@ -98,26 +86,33 @@ the answer determines where every file goes.
 **Goal:** rebuild the engine deleted earlier, shaped for what the three
 documents now require rather than for the original nine-rule sketch.
 
-**Blocked by:** Phase 0 layout and family-name decisions.
+**Blocked by:** nothing. Phase 0 is closed; the layout is
+[D2](docs/decisions.md#d2--goorg-adopts-domains-in-both-pkg-and-cmd).
 
-- [ ] Apply the Phase 0 layout decision; module skeleton in place
-- [ ] `diag` — `Diagnostic`, `Position`, `Severity`, deterministic sort, counts
-- [ ] `project` — tree walk, parse, `Project`/`Package`/`File`/`Dir` model,
-      parse errors surfaced as findings rather than aborting the run
-- [ ] `rules` — registry, `Rule` struct **carrying a `Tier` field from day one**
-      (`syntax` | `types`), even though only `syntax` exists yet. Retrofitting a
-      tier onto a populated registry is far more expensive than declaring it
-      unused for three phases.
-- [ ] `runner` — severity resolution, `RuleID`/`Severity` stamping, rules stay
-      ignorant of configuration
-- [ ] `config` — `.goorg.yaml`, glob severity with specificity precedence,
-      per-rule settings as opaque closures, exclude globs. Unknown keys, unknown
-      rule IDs and unknown severities are hard errors.
-- [ ] `report` — `text`, `github`, `json`; `auto` resolves to `github` under
-      `GITHUB_ACTIONS`
-- [ ] CLI — `check`, `rules`, `explain`, `init`, `version`; flags accepted in any
-      position; exit codes **0 clean / 1 findings / 2 could-not-run**
-- [ ] Suppression comments, per the Phase 0 decision
+- [ ] `pkg/lint/diag` — `Diagnostic`, `Position`, `Severity`, deterministic
+      sort, counts
+- [ ] `pkg/source/project` — tree walk, parse, `Project`/`Package`/`File`/`Dir`
+      model, parse errors surfaced as findings rather than aborting the run
+- [ ] `pkg/lint/rule` — registry, `Rule` struct **carrying a `Tier` field from
+      day one** per [D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in),
+      even though only `syntax` exists until Phase 5
+- [ ] `pkg/lint/runner` — severity resolution, `RuleID`/`Severity` stamping,
+      rules stay ignorant of configuration
+- [ ] `pkg/lint/config` — `.goorg.yaml`, glob severity with specificity
+      precedence, per-rule settings as opaque closures, exclude globs. Unknown
+      keys, unknown rule IDs and unknown severities are hard errors.
+- [ ] `pkg/lint/report` — `text`, `github`, `json`; `auto` resolves to `github`
+      under `GITHUB_ACTIONS`
+- [ ] `internal/cli` — `check`, `rules`, `explain`, `init`, `version`; flags
+      accepted in any position; exit codes **0 clean / 1 findings /
+      2 could-not-run**
+- [ ] `cmd/lint/goorg` — thin main, wires os streams into the CLI
+- [ ] Suppression per [D4](docs/decisions.md#d4--inline-suppression-requires-a-reason):
+      `//goorg:ignore <rule-id> — <reason>`, missing reason reported as
+      `goorg/invalid-suppression`, plus a stale-suppression check
+- [ ] Reserve the `goorg/` namespace for meta-diagnostics
+      (`goorg/parse-error`, `goorg/invalid-suppression`); it is not a
+      configurable family
 - [ ] Rule test harness — in-memory file map → temp tree → findings, plus the
       registry well-formedness and determinism meta-tests
 - [ ] **gofmt conformance harness** — for every rule fixture, run `gofmt` over it
@@ -194,7 +189,7 @@ contradictory findings on any fixture.
 
 **Blocked by:** Phase 1. Independent of Phases 2–3; can run in parallel.
 
-- [ ] `logic/expand-struct-definition` — do this one first. Detection is exact
+- [ ] `pat/expand-struct-definition` — do this one first. Detection is exact
       (compare the line of `Fields.Opening` and `Fields.Closing`), it has no
       heuristic and no false positives, and it is the sharpest test of the gofmt
       conformance harness.
@@ -203,7 +198,7 @@ contradictory findings on any fixture.
 - [ ] `logic/iota-candidate` — shares the enum classifier with
       `org/member-order`; build it once
 - [ ] `logic/prefer-guard-clause`
-- [ ] `logic/factory-naming` — ship `scope: prefixed` only. `all-factories`
+- [ ] `pat/factory-naming` — lives in `pkg/rules/pattern`; ship `scope: prefixed` only. `all-factories`
       flags `Parse`, `Open`, `Dial`, `MustCompile` and every other established
       idiom; it stays opt-in and undocumented in `goorg init`.
 - [ ] Decide the imported-result-type gap in `factory-naming`: skip, guess, or
@@ -220,8 +215,8 @@ green, specifically for `expand-struct-definition`.
 
 **Goal:** the 5 type-tier rules, and the loader they need.
 
-**Blocked by:** Phase 0 decision on `go/types`. If that decision is no, this
-phase and 5 rules are cut.
+**Blocked by:** Phase 4. Approved by
+[D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in).
 
 - [ ] `go/packages` loader alongside the syntax loader; `golang.org/x/tools`
       becomes the first heavy dependency
@@ -250,10 +245,12 @@ dependency produces a skipped-coverage warning, not a pass.
 
 **Goal:** whichever of the 50 survive Phase 0.
 
-**Blocked by:** Phase 0 approve/deny; individually, Phase 4 or 5 by tier.
+**Blocked by:** sign-off on
+[D7](docs/decisions.md#d7--recommendations-on-the-50-proposals); individually,
+Phase 4 or 5 by tier. Recommended split: 10 deny, 28 approve, 12 defer.
 
-- [ ] Implement approved syntax-tier proposals
-- [ ] Implement approved type-tier proposals
+- [ ] Implement the 17 approved syntax-tier proposals
+- [ ] Implement the 11 approved type-tier proposals
 - [ ] For each denied proposal tagged **exists**, document the `golangci-lint`
       configuration that covers it instead, so the gap is deliberate and
       recorded rather than forgotten
@@ -305,7 +302,7 @@ verifying against the real binary rather than writing from scratch.
 Deliberately unplanned. Recorded so the decision is visible rather than
 forgotten.
 
-- **Autofix (`--fix`).** `logic/expand-struct-definition` is purely positional
+- **Autofix (`--fix`).** `pat/expand-struct-definition` is purely positional
   and could not get it wrong; `logic/iota-candidate` and several control-flow
   proposals are mechanical. goorg currently promises never to modify source, and
   reversing that is a product decision, not a task.

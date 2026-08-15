@@ -30,12 +30,12 @@ tasks:
     generates:
       - bin/{{.BINARY}}
     cmds:
-      - go build -trimpath -ldflags '{{.LDFLAGS}}' -o bin/{{.BINARY}} ./cmd/goorg
+      - go build -trimpath -ldflags '{{.LDFLAGS}}' -o bin/{{.BINARY}} ./cmd/lint/goorg
 
   install:
     desc: Install goorg into $GOBIN
     cmds:
-      - go install -trimpath -ldflags '{{.LDFLAGS}}' ./cmd/goorg
+      - go install -trimpath -ldflags '{{.LDFLAGS}}' ./cmd/lint/goorg
 
   test:
     desc: Run the test suite
@@ -92,6 +92,11 @@ tasks:
     deps: [build]
     cmds:
       - ./bin/{{.BINARY}} rules
+
+  calibrate:
+    desc: Measure budget distributions over a corpus (default: the Go standard library)
+    cmds:
+      - go run ./cmd/calibration/measure {{.CLI_ARGS | default (printf "%s/src" (env "GOROOT"))}}
 
   clean:
     desc: Remove build and coverage artifacts

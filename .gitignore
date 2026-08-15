@@ -1,5 +1,6 @@
-# Compiled binaries
+# Compiled binaries. `go build ./...` drops one per main package in the cwd.
 /goorg
+/measure
 /bin/
 /dist/
 *.exe
