@@ -10,6 +10,8 @@ import (
 )
 
 // ANSI styles, applied only when Options.Color is set.
+//
+//goorg:ignore logic/stringly-typed-enum — a palette used together, not a set of alternatives
 const (
 	ansiReset  = "\x1b[0m"
 	ansiBold   = "\x1b[1m"

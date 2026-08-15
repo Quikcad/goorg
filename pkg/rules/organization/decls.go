@@ -12,6 +12,7 @@ import (
 // first section, so declarations sort naturally by section value.
 type section int
 
+//goorg:ignore logic/enum-zero-value-unnamed — the zero section is the first one by construction, not an unset value
 const (
 	// sectionEnums holds const blocks and the named types they belong to.
 	sectionEnums section = iota
@@ -64,6 +65,15 @@ func varSection(d *ast.GenDecl, sections map[string]section) section {
 	return sect
 }
 
+// isFunction reports whether the declaration is a function or method. It is
+// derived rather than stored: a stored copy could disagree with the node, and
+// two booleans that cannot vary independently are a state machine pretending to
+// be flags.
+func (m member) isFunction() bool {
+	_, ok := m.node.(*ast.FuncDecl)
+	return ok
+}
+
 // member is one top-level declaration, classified.
 type member struct {
 	node ast.Decl
@@ -77,8 +87,6 @@ type member struct {
 	// exported reports whether name is exported. Meaningless for var and const
 	// blocks, which may declare several names at once.
 	exported bool
-	// isFunc distinguishes functions and methods from everything else.
-	isFunc bool
 	// isMethod reports whether the declaration has a receiver.
 	isMethod bool
 }
@@ -122,7 +130,6 @@ func classifyFunc(d *ast.FuncDecl, local map[string]bool) member {
 		node:     d,
 		name:     d.Name.Name,
 		exported: d.Name.IsExported(),
-		isFunc:   true,
 	}
 	if d.Recv != nil {
 		out.sect = sectionTypes

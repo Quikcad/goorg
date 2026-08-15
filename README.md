@@ -247,8 +247,9 @@ These five need the module to compile. `--syntax-only` skips them.
 
 ### Tiers
 
-On goorg itself the syntax tier takes 20 ms and both tiers take 650 ms, against
-475 ms for `go vet ./...` — the honest comparison, since both type-check.
+On goorg itself, with all 55 rules enabled, the syntax tier takes 34 ms and
+both tiers take 730 ms — against 475 ms for `go vet ./...`, the honest
+comparison since both type-check.
 
 Every rule declares a tier. **Syntax** rules use `go/parser` only, so they work
 on a tree that does not compile — which is exactly when someone is mid-refactor

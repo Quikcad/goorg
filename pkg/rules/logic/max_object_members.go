@@ -158,6 +158,23 @@ func checkPackageTypes(c *rule.Context, pkg *project.Package, s *maxObjectMember
 	return out
 }
 
+// declaredFields counts a struct's fields, expanding grouped names. An
+// embedded type counts as one member rather than as its expansion, which keeps
+// the count about what this type declares.
+func declaredFields(st *ast.StructType, countEmbedded bool) int {
+	count := 0
+	for _, field := range st.Fields.List {
+		if len(field.Names) == 0 {
+			if countEmbedded {
+				count++
+			}
+			continue
+		}
+		count += len(field.Names)
+	}
+	return count
+}
+
 // collectFields records the declared field count of every struct in a type
 // declaration.
 func collectFields(c *rule.Context, d *ast.GenDecl, size func(string) *typeSize, countEmbedded bool) {
@@ -172,16 +189,6 @@ func collectFields(c *rule.Context, d *ast.GenDecl, size func(string) *typeSize,
 		if !ok || st.Fields == nil {
 			continue
 		}
-		for _, field := range st.Fields.List {
-			if len(field.Names) == 0 {
-				// An embedded type. Counting it as one member rather than
-				// expanding it keeps the count about what this type declares.
-				if countEmbedded {
-					t.fields++
-				}
-				continue
-			}
-			t.fields += len(field.Names)
-		}
+		t.fields += declaredFields(st, countEmbedded)
 	}
 }

@@ -9,15 +9,17 @@ import (
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
-// Layout modes for dir/domain-layout.
+// layoutMode is the shape a root's packages must take.
+type layoutMode string
+
 const (
 	// modeDomains requires every package to belong to a domain:
 	// <root>/<domain>/<package>.
-	modeDomains = "domains"
+	modeDomains layoutMode = "domains"
 	// modePackages forbids the domain layer: <root>/<package>.
-	modePackages = "packages"
+	modePackages layoutMode = "packages"
 	// modeAny accepts either shape and disables the rule for that root.
-	modeAny = "any"
+	modeAny layoutMode = "any"
 )
 
 // defaultRoots are the top-level directories permitted to contain Go packages.

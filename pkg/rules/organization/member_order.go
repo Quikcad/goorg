@@ -152,9 +152,9 @@ func describe(d member) string {
 	switch {
 	case d.isMethod:
 		return fmt.Sprintf("method %s.%s", d.owner, d.name)
-	case d.isFunc && d.owner != "":
+	case d.isFunction() && d.owner != "":
 		return fmt.Sprintf("factory %s", d.name)
-	case d.isFunc:
+	case d.isFunction():
 		return fmt.Sprintf("func %s", d.name)
 	case d.name != "":
 		return fmt.Sprintf("%s %s", d.sect, d.name)

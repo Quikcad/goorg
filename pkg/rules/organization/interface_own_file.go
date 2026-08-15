@@ -10,15 +10,17 @@ import (
 	"github.com/Quikcad/goorg/pkg/lint/rule"
 )
 
-// Modes for org/interface-own-file.
+// interfaceMode is how strictly an interface must be isolated in its file.
+type interfaceMode string
+
 const (
 	// modeOwnFile allows one interface per file and no other type.
-	modeOwnFile = "own-file"
+	modeOwnFile interfaceMode = "own-file"
 	// modeSeparate lets interfaces share a file with each other but not with
 	// struct declarations.
-	modeSeparate = "separate"
+	modeSeparate interfaceMode = "separate"
 	// modeOff disables the rule.
-	modeOff = "off"
+	modeOff interfaceMode = "off"
 )
 
 // interfaceOwnFileSettings is the configurable surface of the rule.
@@ -64,11 +66,11 @@ Configure in .goorg.yaml:
 	    mode: own-file
 	    min_methods: 1`,
 	Check: func(c *rule.Context) []diag.Diagnostic {
-		s := interfaceOwnFileSettings{Mode: modeOwnFile, MinMethods: 1}
+		s := interfaceOwnFileSettings{Mode: string(modeOwnFile), MinMethods: 1}
 		if err := c.Settings(&s); err != nil {
 			return settingsError(err)
 		}
-		mode := strings.ToLower(strings.TrimSpace(s.Mode))
+		mode := interfaceMode(strings.ToLower(strings.TrimSpace(s.Mode)))
 		switch mode {
 		case modeOff:
 			return nil

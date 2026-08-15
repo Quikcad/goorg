@@ -39,6 +39,7 @@ func (s *series) report() string {
 		p(0.50), p(0.75), p(0.90), p(0.95), p(0.99), s.values[len(s.values)-1])
 }
 
+//goorg:ignore logic/max-function-lines — a measurement script; splitting it would hide the metric list
 func main() {
 	root := os.Args[1]
 
@@ -52,6 +53,9 @@ func main() {
 	dirEntries := &series{name: "entries/directory"}
 	condOperands := &series{name: "operands/condition"}
 	varBlocks := &series{name: "package vars/file"}
+	funcLines := &series{name: "lines/function"}
+	nesting := &series{name: "nesting depth/function"}
+	params := &series{name: "params/function"}
 
 	var generated int
 	fset := token.NewFileSet()
@@ -110,6 +114,13 @@ func main() {
 		for _, decl := range f.Decls {
 			switch decl := decl.(type) {
 			case *ast.FuncDecl:
+				if decl.Body != nil {
+					open := fset.Position(decl.Body.Lbrace).Line
+					shut := fset.Position(decl.Body.Rbrace).Line
+					funcLines.add(shut - open)
+					nesting.add(blockDepth(decl.Body, 0))
+					params.add(decl.Type.Params.NumFields())
+				}
 				if decl.Recv != nil {
 					meths++
 					if tn := receiverTypeName(decl.Recv.List[0].Type); tn != "" {
@@ -179,10 +190,35 @@ func main() {
 	for _, s := range []*series{
 		funcsPerFile, exportedPerFile, privateWithExports, methodsPerFile,
 		linesPerFile, fieldsPerStruct, methodsPerType, dirEntries,
-		condOperands, varBlocks,
+		condOperands, varBlocks, funcLines, nesting, params,
 	} {
 		fmt.Println(s.report())
 	}
+}
+
+// blockDepth returns the deepest block nesting inside a block.
+func blockDepth(block *ast.BlockStmt, depth int) int {
+	deepest := depth
+	for _, stmt := range block.List {
+		var inner *ast.BlockStmt
+		switch s := stmt.(type) {
+		case *ast.IfStmt:
+			inner = s.Body
+		case *ast.ForStmt:
+			inner = s.Body
+		case *ast.RangeStmt:
+			inner = s.Body
+		case *ast.BlockStmt:
+			inner = s
+		}
+		if inner == nil {
+			continue
+		}
+		if d := blockDepth(inner, depth+1); d > deepest {
+			deepest = d
+		}
+	}
+	return deepest
 }
 
 // isGenerated reports whether a file carries the conventional generated-code

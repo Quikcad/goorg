@@ -106,7 +106,7 @@ func checkPackageCohesion(c *rule.Context, pkg *project.Package, s *typeCohesion
 			case d.isMethod:
 				h := home(d.owner)
 				h.members[f.Name] = append(h.members[f.Name], "method "+d.name)
-			case d.isFunc:
+			case d.isFunction():
 				if !s.IncludeFactories {
 					continue
 				}

@@ -275,8 +275,8 @@ func f(ok bool) int {
 
 func TestFamilyIsWellFormed(t *testing.T) {
 	rules := Rules()
-	if len(rules) != 7 {
-		t.Fatalf("family has %d rules, want 7", len(rules))
+	if len(rules) != 35 {
+		t.Fatalf("family has %d rules, want 35", len(rules))
 	}
 	for _, r := range rules {
 		t.Run(r.ID, func(t *testing.T) {

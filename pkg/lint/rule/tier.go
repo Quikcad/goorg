@@ -11,6 +11,7 @@ import "fmt"
 // it unused. See docs/decisions.md D1.
 type Tier int
 
+//goorg:ignore logic/enum-zero-value-unnamed — syntax is the deliberate zero; a rule that declares no tier needs no type information
 const (
 	// Syntax rules need only go/parser. They are cheap and always run.
 	Syntax Tier = iota

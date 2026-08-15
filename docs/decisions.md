@@ -184,6 +184,9 @@ excluding 428 generated ones.
 | `logic/max-object-members` (fields) | 3 | 5 | 9 | 12 | 12 | **12** | 5% |
 | `logic/max-object-members` (methods) | 3 | 6 | 12 | 20 | 15 | **15** | 7% |
 | `logic/max-condition-operands` | 1 | 1 | 2 | 2 | 4 | **4** | 1% |
+| `logic/max-function-lines` | 6 | 16 | 40 | 68 | — | **80** | 4% |
+| `logic/max-nesting-depth` | 0 | 1 | 2 | 3 | — | **3** | 5% |
+| `logic/max-function-params` | 1 | 2 | 3 | 4 | — | **5** | 3% |
 
 **What the measurement does and does not tell us.** It measures *adoption
 cost* — how much typical Go a limit would flag — not *correctness*. For rules
@@ -201,6 +204,10 @@ authority, and two cases matter:
 - **`logic/max-condition-operands`.** p99 is 4 and p95 is 2, so a limit of 4
   flags about 1% of conditions. The guess was well calibrated by accident. It
   could tighten to 3 at roughly 2% and still be comfortable.
+
+The last three were added in phase 6, measured the same way. `max-nesting-depth`
+at 3 sits exactly at p95, which is why it found seven real offenders in goorg's
+own code rather than none.
 
 **Caveat.** The standard library is old, unusually low-level, and written under
 conventions that predate most of Go's ecosystem. It is a proxy for "typical

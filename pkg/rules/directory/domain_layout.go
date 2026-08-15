@@ -17,8 +17,8 @@ type domainLayoutSettings struct {
 }
 
 // modes returns the configured mode per root.
-func (s *domainLayoutSettings) modes() map[string]string {
-	return map[string]string{"pkg": s.Pkg, "cmd": s.Cmd, "internal": s.Internal}
+func (s *domainLayoutSettings) modes() map[string]layoutMode {
+	return map[string]layoutMode{"pkg": layoutMode(s.Pkg), "cmd": layoutMode(s.Cmd), "internal": layoutMode(s.Internal)}
 }
 
 var domainLayout = &rule.Rule{
@@ -65,7 +65,7 @@ Configure in .goorg.yaml:
 	    cmd: domains
 	    internal: any`,
 	Check: func(c *rule.Context) []diag.Diagnostic {
-		s := domainLayoutSettings{Pkg: modeDomains, Cmd: modeDomains, Internal: modeAny}
+		s := domainLayoutSettings{Pkg: string(modeDomains), Cmd: string(modeDomains), Internal: string(modeAny)}
 		if err := c.Settings(&s); err != nil {
 			return settingsError(err)
 		}
@@ -104,8 +104,8 @@ Configure in .goorg.yaml:
 
 // requiredDepth converts a mode into the minimum depth a package must sit at,
 // or 0 when the rule does not apply to that root.
-func requiredDepth(mode string) (int, error) {
-	switch strings.ToLower(strings.TrimSpace(mode)) {
+func requiredDepth(mode layoutMode) (int, error) {
+	switch layoutMode(strings.ToLower(strings.TrimSpace(string(mode)))) {
 	case modeDomains:
 		return 2, nil
 	case modePackages, modeAny, "":

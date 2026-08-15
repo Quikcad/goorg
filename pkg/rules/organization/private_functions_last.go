@@ -76,7 +76,7 @@ func checkExportedFirst(c *rule.Context, f *fileDecls, methods bool) []diag.Diag
 
 	var out []diag.Diagnostic
 	for _, d := range f.decls {
-		if !d.isFunc || d.isMethod != methods {
+		if !d.isFunction() || d.isMethod != methods {
 			continue
 		}
 		// A factory sits with the type it builds, which outranks this rule —

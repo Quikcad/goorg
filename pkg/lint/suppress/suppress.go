@@ -94,27 +94,21 @@ func Scan(p *project.Project) (*Set, []diag.Diagnostic) {
 	var problems []diag.Diagnostic
 
 	for _, f := range p.Files() {
-		for _, group := range f.Syntax.Comments {
-			for _, c := range group.List {
-				text := strings.TrimSpace(c.Text)
-				if !strings.HasPrefix(text, directivePrefix) {
-					continue
-				}
-				line := p.Position(c.Pos()).Line
-				d, err := parse(text, f.Rel, line)
-				if err != nil {
-					problems = append(problems, diag.Diagnostic{
-						Position: diag.Position{Path: f.Rel, Line: line},
-						RuleID:   InvalidRule,
-						Severity: diag.Error,
-						Message:  err.Error(),
-						Help:     "write //goorg:ignore <rule-id> — <reason>",
-					})
-					continue
-				}
-				d.Start, d.End = coverage(p, f, line)
-				s.byPath[f.Rel] = append(s.byPath[f.Rel], d)
+		for _, c := range directiveComments(f) {
+			line := p.Position(c.Pos()).Line
+			d, err := parse(strings.TrimSpace(c.Text), f.Rel, line)
+			if err != nil {
+				problems = append(problems, diag.Diagnostic{
+					Position: diag.Position{Path: f.Rel, Line: line},
+					RuleID:   InvalidRule,
+					Severity: diag.Error,
+					Message:  err.Error(),
+					Help:     "write //goorg:ignore <rule-id> — <reason>",
+				})
+				continue
 			}
+			d.Start, d.End = coverage(p, f, line)
+			s.byPath[f.Rel] = append(s.byPath[f.Rel], d)
 		}
 	}
 	diag.Sort(problems)
@@ -180,6 +174,19 @@ func (s *Set) suppress(x diag.Diagnostic) bool {
 		}
 	}
 	return false
+}
+
+// directiveComments returns the suppression comments in a file.
+func directiveComments(f *project.File) []*ast.Comment {
+	var out []*ast.Comment
+	for _, group := range f.Syntax.Comments {
+		for _, c := range group.List {
+			if strings.HasPrefix(strings.TrimSpace(c.Text), directivePrefix) {
+				out = append(out, c)
+			}
+		}
+	}
+	return out
 }
 
 // coverage decides which lines a directive protects.

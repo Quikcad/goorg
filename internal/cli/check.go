@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Quikcad/goorg/pkg/lint/config"
 	"github.com/Quikcad/goorg/pkg/lint/diag"
 	"github.com/Quikcad/goorg/pkg/lint/report"
+	"github.com/Quikcad/goorg/pkg/lint/rule"
 	"github.com/Quikcad/goorg/pkg/lint/runner"
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
@@ -34,6 +36,113 @@ func (f *checkFlags) bind(fs *flag.FlagSet) {
 	fs.BoolVar(&f.syntaxOnly, "syntax-only", false, "run only syntax-tier rules; skip rules that need type information")
 }
 
+// checkRun is everything resolved from flags and configuration before rules run.
+type checkRun struct {
+	root   string
+	proj   *project.Project
+	cfg    *config.Config
+	set    *rule.Set
+	tiers  tierPlan
+	only   []string
+	format report.Format
+	failOn diag.Severity
+}
+
+// resolveCheck turns flags and configuration into a runnable plan.
+func resolveCheck(env *Env, f *checkFlags, args []string) (*checkRun, int) {
+	failOn, err := diag.ParseSeverity(f.failOn)
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: -fail-on: %v\n", err)
+		return nil, ExitError
+	}
+	if failOn == diag.Off {
+		fmt.Fprintln(env.Stderr, "goorg: -fail-on must be error or warning")
+		return nil, ExitError
+	}
+
+	format, err := resolveFormat(env, f.format)
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: -format: %v\n", err)
+		return nil, ExitError
+	}
+
+	set, err := buildRuleSet()
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
+		return nil, ExitError
+	}
+
+	rootArg := f.root
+	if rootArg == "" {
+		rootArg = firstPathArg(args)
+	}
+	root, err := resolveRoot(rootArg)
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
+		return nil, ExitError
+	}
+
+	cfg, err := loadConfig(root, f.configPath, set)
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
+		return nil, ExitError
+	}
+
+	only, err := normalizePaths(root, args)
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
+		return nil, ExitError
+	}
+
+	proj, err := project.Load(root, project.Options{Exclude: cfg.Excluder()})
+	if err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
+		return nil, ExitError
+	}
+
+	return &checkRun{
+		root: root, proj: proj, cfg: cfg, set: set,
+		tiers:  planTiers(root, cfg, set, f.syntaxOnly),
+		only:   only,
+		format: format,
+		failOn: failOn,
+	}, ExitOK
+}
+
+// run executes the rules and renders the result.
+func (p *checkRun) run(env *Env, f *checkFlags) int {
+	res := runner.Run(p.proj, p.cfg, p.set, runner.Options{Tiers: p.tiers.tiers, Typed: p.tiers.program})
+	res.Diagnostics = append(res.Diagnostics, p.tiers.gaps...)
+	if len(p.only) > 0 {
+		res.Diagnostics = filterPaths(res.Diagnostics, p.only)
+	}
+	diag.Sort(res.Diagnostics)
+	res.Counts = diag.Summarize(res.Diagnostics)
+
+	opts := report.Options{Color: useColor(env, f.color), ShowHelp: !f.brief}
+	if err := report.Write(env.Stdout, p.format, res.Diagnostics, opts); err != nil {
+		fmt.Fprintf(env.Stderr, "goorg: write report: %v\n", err)
+		return ExitError
+	}
+
+	switch {
+	case p.tiers.failed:
+		// A type tier that was wanted and could not run is goorg failing to do
+		// its job, not the project failing a check.
+		return ExitError
+	case res.Counts.Errors > 0:
+		return ExitFindings
+	case p.failOn == diag.Warning && res.Counts.Warnings > 0:
+		return ExitFindings
+	case f.maxWarnings >= 0 && res.Counts.Warnings > f.maxWarnings:
+		fmt.Fprintf(env.Stderr, "goorg: %s exceeds -max-warnings=%d\n",
+			plural(res.Counts.Warnings, "warning"), f.maxWarnings)
+		return ExitFindings
+	default:
+		return ExitOK
+	}
+}
+
 func runCheck(env *Env, args []string) int {
 	fs := newFlagSet(env, "check")
 	var f checkFlags
@@ -56,88 +165,11 @@ Flags:
 		return ExitError
 	}
 
-	failOn, err := diag.ParseSeverity(f.failOn)
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: -fail-on: %v\n", err)
-		return ExitError
+	plan, code := resolveCheck(env, &f, fs.Args())
+	if code != ExitOK {
+		return code
 	}
-	if failOn == diag.Off {
-		fmt.Fprintln(env.Stderr, "goorg: -fail-on must be error or warning")
-		return ExitError
-	}
-
-	format, err := resolveFormat(env, f.format)
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: -format: %v\n", err)
-		return ExitError
-	}
-
-	set, err := buildRuleSet()
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
-		return ExitError
-	}
-
-	rootArg := f.root
-	if rootArg == "" {
-		rootArg = firstPathArg(fs.Args())
-	}
-	root, err := resolveRoot(rootArg)
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
-		return ExitError
-	}
-
-	cfg, err := loadConfig(root, f.configPath, set)
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
-		return ExitError
-	}
-
-	only, err := normalizePaths(root, fs.Args())
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
-		return ExitError
-	}
-
-	proj, err := project.Load(root, project.Options{Exclude: cfg.Excluder()})
-	if err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: %v\n", err)
-		return ExitError
-	}
-
-	plan := planTiers(root, cfg, set, f.syntaxOnly)
-	res := runner.Run(proj, cfg, set, runner.Options{Tiers: plan.tiers, Typed: plan.program})
-	res.Diagnostics = append(res.Diagnostics, plan.gaps...)
-	diag.Sort(res.Diagnostics)
-	res.Counts = diag.Summarize(res.Diagnostics)
-	if len(only) > 0 {
-		res.Diagnostics = filterPaths(res.Diagnostics, only)
-		res.Counts = diag.Summarize(res.Diagnostics)
-	}
-
-	opts := report.Options{Color: useColor(env, f.color), ShowHelp: !f.brief}
-	if err := report.Write(env.Stdout, format, res.Diagnostics, opts); err != nil {
-		fmt.Fprintf(env.Stderr, "goorg: write report: %v\n", err)
-		return ExitError
-	}
-
-	switch {
-	case plan.failed:
-		// A type tier that was wanted and could not run is goorg failing to
-		// do its job, not the project failing a check.
-		return ExitError
-	case res.Counts.Errors > 0:
-		return ExitFindings
-	case failOn == diag.Warning && res.Counts.Warnings > 0:
-		return ExitFindings
-	case f.maxWarnings >= 0 && res.Counts.Warnings > f.maxWarnings:
-		fmt.Fprintf(env.Stderr, "goorg: %s exceeds -max-warnings=%d\n",
-			plural(res.Counts.Warnings, "warning"), f.maxWarnings)
-		return ExitFindings
-	default:
-		return ExitOK
-	}
+	return plan.run(env, &f)
 }
 
 // filterPaths keeps only diagnostics under one of the requested paths.

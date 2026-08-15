@@ -41,6 +41,35 @@ rules:
   logic/interface-registry: error
   org/consumer-locality: warning
   org/global-file-scoped: error
+  # rules approved in D7
+  logic/boolean-field-count: warning
+  logic/boolean-parameter: warning
+  logic/constraint-too-wide: warning
+  logic/context-in-struct: error
+  logic/duplicate-const-value: error
+  logic/empty-branch: warning
+  logic/empty-interface-field: warning
+  logic/enum-missing-string: warning
+  logic/enum-zero-value-unnamed: warning
+  logic/exported-embedded-mutex: error
+  logic/float-equality: error
+  logic/identical-branches: error
+  logic/if-chain-to-switch: warning
+  logic/integer-division-to-float: error
+  logic/interface-at-consumer: warning
+  logic/interface-size: warning
+  logic/lossy-conversion: error
+  logic/max-function-lines: warning
+  logic/max-function-params: warning
+  logic/max-nesting-depth: error
+  logic/max-return-values: warning
+  logic/negated-condition: warning
+  logic/panic-outside-main: error
+  logic/pointer-to-slice-or-map: warning
+  logic/single-case-switch: warning
+  logic/stringly-typed-enum: warning
+  logic/unsigned-underflow: warning
+  logic/unused-type-parameter: warning
 
 settings:
   dir/domain-layout:

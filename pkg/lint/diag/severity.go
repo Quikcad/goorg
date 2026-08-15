@@ -9,6 +9,7 @@ import (
 // Rules carry a default; configuration can raise or lower it.
 type Severity int
 
+//goorg:ignore logic/enum-zero-value-unnamed — off is the deliberate zero: a rule with no configured severity is not silently unset, it is off
 const (
 	// Off suppresses the rule entirely. It is not run at all.
 	Off Severity = iota

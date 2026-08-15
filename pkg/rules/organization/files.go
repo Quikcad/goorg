@@ -51,7 +51,7 @@ func nonTestFiles(c *rule.Context) []*project.File {
 // countFuncs tallies a file's top-level functions.
 func countFuncs(f *project.File, countMethods bool) (exported, unexported int) {
 	for _, d := range classify(f) {
-		if !d.isFunc {
+		if !d.isFunction() {
 			continue
 		}
 		if d.isMethod && !countMethods {

@@ -2,8 +2,6 @@ package logic
 
 import (
 	"fmt"
-	"go/ast"
-	"go/token"
 	"go/types"
 	"sort"
 	"strings"
@@ -24,12 +22,6 @@ type interfaceRegistrySettings struct {
 	ReportMissingAssertion bool `yaml:"report_missing_assertion"`
 	// AssertionsForExportedOnly limits the assertion check to exported types.
 	AssertionsForExportedOnly bool `yaml:"assertions_for_exported_only"`
-}
-
-// assertion records a compile-time `var _ I = T(...)` pairing.
-type assertion struct {
-	iface string
-	named string
 }
 
 var interfaceRegistry = &rule.Rule{
@@ -217,44 +209,6 @@ func methodSet(named *types.Named) map[string]*types.Func {
 	return out
 }
 
-// assertionsIn collects the `var _ I = T(...)` pairings a package declares.
-func assertionsIn(pkg *typed.Package) map[assertion]bool {
-	out := map[assertion]bool{}
-	for _, file := range pkg.Syntax {
-		for _, node := range file.Decls {
-			gen, ok := node.(*ast.GenDecl)
-			if !ok || gen.Tok != token.VAR {
-				continue
-			}
-			for _, spec := range gen.Specs {
-				vs, ok := spec.(*ast.ValueSpec)
-				if !ok || vs.Type == nil || !allBlank(vs.Names) {
-					continue
-				}
-				recordAssertion(pkg, vs, out)
-			}
-		}
-	}
-	return out
-}
-
-func recordAssertion(pkg *typed.Package, vs *ast.ValueSpec, out map[assertion]bool) {
-	ifaceType := pkg.Info.TypeOf(vs.Type)
-	if ifaceType == nil {
-		return
-	}
-	iface := qualifiedName(ifaceType)
-	for _, value := range vs.Values {
-		valueType := pkg.Info.TypeOf(value)
-		if valueType == nil {
-			continue
-		}
-		if named := underlyingNamed(valueType); named != "" {
-			out[assertion{iface: iface, named: named}] = true
-		}
-	}
-}
-
 // namedTypes returns the named types a package declares, sorted by name.
 func namedTypes(pkg *typed.Package) []*types.Named {
 	if pkg.Types == nil {
@@ -324,13 +278,4 @@ func shortName(qualified string) string {
 		return strings.SplitN(qualified, ".", 2)[0] + "." + name
 	}
 	return qualified
-}
-
-func allBlank(names []*ast.Ident) bool {
-	for _, n := range names {
-		if n.Name != "_" {
-			return false
-		}
-	}
-	return len(names) > 0
 }

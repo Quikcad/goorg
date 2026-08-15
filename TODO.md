@@ -6,7 +6,7 @@ Implementation plan, derived from the three specifications:
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
 - [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
-**All 27 specified rules implemented** — 22 syntax-tier, 5 type-tier.
+**55 rules implemented** — 39 syntax-tier, 16 type-tier.
 
 Decisions that bind implementation are recorded in
 [`docs/decisions.md`](docs/decisions.md).
@@ -288,19 +288,42 @@ package produces a coverage gap rather than a pass.
 
 ---
 
-## Phase 6 — Approved proposals
+## Phase 6 — Approved proposals — **complete**
 
-**Goal:** whichever of the 50 survive Phase 0.
+**Goal:** the 28 rules [D7](docs/decisions.md#d7--disposition-of-the-50-proposals)
+approved.
 
-**Blocked by:** sign-off on
-[D7](docs/decisions.md#d7--recommendations-on-the-50-proposals); individually,
-Phase 4 or 5 by tier. Recommended split: 10 deny, 28 approve, 12 defer.
+- [x] 17 syntax-tier proposals
+- [x] 11 type-tier proposals
+- [x] `.goorg.yaml` enables all 55 rules; `task dogfood` passes
+- [ ] Document the `golangci-lint` configuration covering the 9 denied
+      **exists** rules, so the gap stays deliberate rather than forgotten
 
-- [ ] Implement the 17 approved syntax-tier proposals
-- [ ] Implement the 11 approved type-tier proposals
-- [ ] For each denied proposal tagged **exists**, document the `golangci-lint`
-      configuration that covers it instead, so the gap is deliberate and
-      recorded rather than forgotten
+**Three limits calibrated rather than guessed**, added to
+[D5](docs/decisions.md#d5--budget-defaults-calibrated-against-a-measured-corpus):
+`max-function-lines` 80 (p96), `max-nesting-depth` 3 (p95),
+`max-function-params` 5 (p97). Nesting at p95 is why it found seven real
+offenders in goorg's own code.
+
+**Two rules needed narrowing before they were shippable**, both recorded in
+their `Doc`:
+
+- `logic/boolean-field-count` fired on every settings struct. Its rationale is
+  that most combinations of flags are invalid — but an options struct is a bag
+  of *independent* switches where every combination is legal. Types whose names
+  end in Settings, Options, Config or Flags are exempt.
+- `logic/enum-missing-string` fired on string-backed enums, which already print
+  their own value. Exempt.
+
+**`logic/constraint-too-wide` ships narrower than the proposal described.** The
+sketch was "`[T any]` where the body requires `comparable`" — but such code does
+not compile, so there is nothing to report. The rule instead reports the
+detectable and genuinely wrong shape: `[T any]` whose body asserts the value to
+an interface at run time, which is the constraint written in the wrong place.
+The general question is undecidable and the `Doc` says so.
+
+**Exit criteria met:** goorg passes all 55 of its own rules. 34 ms syntax-only,
+726 ms both tiers.
 
 ---
 

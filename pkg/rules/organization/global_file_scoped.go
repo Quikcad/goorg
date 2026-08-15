@@ -75,8 +75,9 @@ Configure in .goorg.yaml:
 			// table or a compiled pattern is written once and read everywhere,
 			// which is what it is for.
 			Exempt: []string{
-				exemptSentinelErrors, exemptInterfaceAsserts,
-				exemptCompiledPatterns, exemptLookupTables, exemptEmbeddedFilesystem,
+				string(exemptSentinelErrors), string(exemptInterfaceAsserts),
+				string(exemptCompiledPatterns), string(exemptLookupTables),
+				string(exemptEmbeddedFilesystem),
 			},
 			IgnoreTests: true,
 		}
@@ -141,9 +142,9 @@ func checkGlobalScope(pkg *typed.Package, s *globalFileScopedSettings) []diag.Di
 // packageVars returns the package-level variables the rule tracks, mapped to
 // the file that declares each one.
 func packageVars(pkg *typed.Package, s *globalFileScopedSettings) map[types.Object]string {
-	exempt := map[string]bool{}
+	exempt := map[globalKind]bool{}
 	for _, kind := range s.Exempt {
-		exempt[kind] = true
+		exempt[globalKind(kind)] = true
 	}
 
 	out := map[types.Object]string{}
@@ -156,25 +157,31 @@ func packageVars(pkg *typed.Package, s *globalFileScopedSettings) map[types.Obje
 			if !ok || gen.Tok != token.VAR {
 				continue
 			}
-			for _, spec := range gen.Specs {
-				vs, ok := spec.(*ast.ValueSpec)
-				if !ok {
-					continue
-				}
-				if kind := classifyGlobal(gen, vs); kind != "" && exempt[kind] {
-					continue
-				}
-				for _, name := range vs.Names {
-					obj := pkg.Info.Defs[name]
-					if obj == nil || name.Name == "_" {
-						continue
-					}
-					out[obj] = pkg.FileOf(name.Pos())
-				}
-			}
+			collectTrackedVars(pkg, gen, exempt, out)
 		}
 	}
 	return out
+}
+
+// collectTrackedVars records the variables of one declaration that no
+// exemption covers, mapped to the file declaring them.
+func collectTrackedVars(pkg *typed.Package, gen *ast.GenDecl, exempt map[globalKind]bool, out map[types.Object]string) {
+	for _, spec := range gen.Specs {
+		vs, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		if kind := classifyGlobal(gen, vs); kind != "" && exempt[kind] {
+			continue
+		}
+		for _, name := range vs.Names {
+			obj := pkg.Info.Defs[name]
+			if obj == nil || name.Name == "_" {
+				continue
+			}
+			out[obj] = pkg.FileOf(name.Pos())
+		}
+	}
 }
 
 func isTestFile(path string) bool {

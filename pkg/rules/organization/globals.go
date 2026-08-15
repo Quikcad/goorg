@@ -12,13 +12,16 @@ import (
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
-// Exemption names for org/globals-singleton-only.
+// globalKind names a category of package-level variable that the globals rules
+// treat as something other than mutable state.
+type globalKind string
+
 const (
-	exemptSentinelErrors     = "sentinel-errors"
-	exemptInterfaceAsserts   = "interface-assertions"
-	exemptCompiledPatterns   = "compiled-patterns"
-	exemptLookupTables       = "lookup-tables"
-	exemptEmbeddedFilesystem = "embedded-filesystems"
+	exemptSentinelErrors     globalKind = "sentinel-errors"
+	exemptInterfaceAsserts   globalKind = "interface-assertions"
+	exemptCompiledPatterns   globalKind = "compiled-patterns"
+	exemptLookupTables       globalKind = "lookup-tables"
+	exemptEmbeddedFilesystem globalKind = "embedded-filesystems"
 )
 
 // compileOnce are constructors whose whole purpose is to do expensive work once
@@ -40,9 +43,9 @@ type globalsSettings struct {
 	RequireUnexportedTables bool `yaml:"require_unexported_tables"`
 }
 
-func (s *globalsSettings) allows(kind string) bool {
+func (s *globalsSettings) allows(kind globalKind) bool {
 	for _, a := range s.Allow {
-		if strings.TrimSpace(a) == kind {
+		if globalKind(strings.TrimSpace(a)) == kind {
 			return true
 		}
 	}
@@ -97,8 +100,9 @@ Configure in .goorg.yaml:
 	Check: func(c *rule.Context) []diag.Diagnostic {
 		s := globalsSettings{
 			Allow: []string{
-				exemptSentinelErrors, exemptInterfaceAsserts,
-				exemptCompiledPatterns, exemptLookupTables, exemptEmbeddedFilesystem,
+				string(exemptSentinelErrors), string(exemptInterfaceAsserts),
+				string(exemptCompiledPatterns), string(exemptLookupTables),
+				string(exemptEmbeddedFilesystem),
 			},
 			RequireUnexportedTables: true,
 		}
@@ -121,43 +125,8 @@ Configure in .goorg.yaml:
 	},
 }
 
-// checkGlobals reports package-level vars that no exemption covers.
-func checkGlobals(c *rule.Context, f *project.File, s *globalsSettings) []diag.Diagnostic {
-	var out []diag.Diagnostic
-	for _, node := range f.Syntax.Decls {
-		gen, ok := node.(*ast.GenDecl)
-		if !ok || gen.Tok != token.VAR {
-			continue
-		}
-		for _, spec := range gen.Specs {
-			vs, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-			kind := classifyGlobal(gen, vs)
-			if kind != "" && s.allows(kind) {
-				if kind != exemptLookupTables || !s.RequireUnexportedTables || !anyExported(vs) {
-					continue
-				}
-				out = append(out, diag.Diagnostic{
-					Position: c.Pos(vs),
-					Message:  fmt.Sprintf("exported lookup table %s can be mutated by any importer", vs.Names[0].Name),
-					Help:     "make it unexported and expose a lookup function",
-				})
-				continue
-			}
-			out = append(out, diag.Diagnostic{
-				Position: c.Pos(vs),
-				Message:  fmt.Sprintf("package-level variable %s is not singleton state", vs.Names[0].Name),
-				Help:     "make it a constant, a struct field, or a singleton guarded by sync.Once",
-			})
-		}
-	}
-	return out
-}
-
 // classifyGlobal names the exemption a declaration qualifies for, or "".
-func classifyGlobal(gen *ast.GenDecl, vs *ast.ValueSpec) string {
+func classifyGlobal(gen *ast.GenDecl, vs *ast.ValueSpec) globalKind {
 	if allBlank(vs.Names) {
 		return exemptInterfaceAsserts
 	}
@@ -186,6 +155,49 @@ func classifyGlobal(gen *ast.GenDecl, vs *ast.ValueSpec) string {
 		}
 	}
 	return ""
+}
+
+// checkGlobalSpec judges one package-level variable declaration.
+func checkGlobalSpec(c *rule.Context, gen *ast.GenDecl, vs *ast.ValueSpec, s *globalsSettings) *diag.Diagnostic {
+	kind := classifyGlobal(gen, vs)
+	if kind == "" || !s.allows(kind) {
+		return &diag.Diagnostic{
+			Position: c.Pos(vs),
+			Message:  fmt.Sprintf("package-level variable %s is not singleton state", vs.Names[0].Name),
+			Help:     "make it a constant, a struct field, or a singleton guarded by sync.Once",
+		}
+	}
+	// An exempt table is still API if it is exported, and any importer can
+	// reassign an element of it.
+	if kind != exemptLookupTables || !s.RequireUnexportedTables || !anyExported(vs) {
+		return nil
+	}
+	return &diag.Diagnostic{
+		Position: c.Pos(vs),
+		Message:  fmt.Sprintf("exported lookup table %s can be mutated by any importer", vs.Names[0].Name),
+		Help:     "make it unexported and expose a lookup function",
+	}
+}
+
+// checkGlobals reports package-level vars that no exemption covers.
+func checkGlobals(c *rule.Context, f *project.File, s *globalsSettings) []diag.Diagnostic {
+	var out []diag.Diagnostic
+	for _, node := range f.Syntax.Decls {
+		gen, ok := node.(*ast.GenDecl)
+		if !ok || gen.Tok != token.VAR {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			if d := checkGlobalSpec(c, gen, vs, s); d != nil {
+				out = append(out, *d)
+			}
+		}
+	}
+	return out
 }
 
 // isCompositeLit recognises a composite literal, including the addressed form.
