@@ -23,6 +23,7 @@ type checkFlags struct {
 	maxWarnings int
 	brief       bool
 	syntaxOnly  bool
+	noWhatIf    bool
 }
 
 func (f *checkFlags) bind(fs *flag.FlagSet) {
@@ -34,6 +35,7 @@ func (f *checkFlags) bind(fs *flag.FlagSet) {
 	fs.IntVar(&f.maxWarnings, "max-warnings", -1, "fail if warnings exceed this count (-1 disables the check)")
 	fs.BoolVar(&f.brief, "brief", false, "omit the help line under each finding in text output")
 	fs.BoolVar(&f.syntaxOnly, "syntax-only", false, "run only syntax-tier rules; skip rules that need type information")
+	fs.BoolVar(&f.noWhatIf, "no-what-if", false, "report proposed relocations without checking whether the move would break another rule")
 }
 
 // checkRun is everything resolved from flags and configuration before rules run.
@@ -111,7 +113,7 @@ func resolveCheck(env *Env, f *checkFlags, args []string) (*checkRun, int) {
 
 // run executes the rules and renders the result.
 func (p *checkRun) run(env *Env, f *checkFlags) int {
-	res := runner.Run(p.proj, p.cfg, p.set, runner.Options{Tiers: p.tiers.tiers, Typed: p.tiers.program})
+	res := runner.Run(p.proj, p.cfg, p.set, runner.Options{Tiers: p.tiers.tiers, Typed: p.tiers.program, WhatIf: !f.noWhatIf})
 	res.Diagnostics = append(res.Diagnostics, p.tiers.gaps...)
 	if len(p.only) > 0 {
 		res.Diagnostics = filterPaths(res.Diagnostics, p.only)

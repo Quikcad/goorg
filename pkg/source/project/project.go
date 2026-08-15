@@ -120,6 +120,18 @@ func (p *Project) Files() []*File {
 	return out
 }
 
+// FileAt returns the file at a root-relative path, or nil.
+func (p *Project) FileAt(rel string) *File {
+	for _, pkg := range p.Packages {
+		for _, f := range pkg.Files {
+			if f.Rel == rel {
+				return f
+			}
+		}
+	}
+	return nil
+}
+
 // visitDir records a directory and decides whether to descend into it.
 func (p *Project) visitDir(rel, path, name string, opts Options) error {
 	if rel == "." {

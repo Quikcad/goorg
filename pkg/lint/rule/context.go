@@ -18,6 +18,13 @@ type Context struct {
 	// loading succeeded, so a type rule may read this without a nil check.
 	Typed *typed.Program
 
+	// proposals are relocations this rule wants the engine to evaluate.
+	proposals []Relocation
+	// whatIf reports whether the engine will judge proposals by making the
+	// move. A rule that carries its own approximation of "is this safe" should
+	// stand down when it does.
+	whatIf bool
+
 	// decode applies this rule's settings block onto a destination struct. It
 	// is nil when the project configures no settings for the rule. Keeping it
 	// an opaque closure is what stops package rule from importing package
@@ -46,6 +53,30 @@ func (c *Context) Settings(dst any) error {
 		return nil
 	}
 	return c.decode(dst)
+}
+
+// WhatIf reports whether the engine will evaluate proposals by applying them.
+//
+// A rule with a fallback heuristic — a count standing in for "the destination
+// has room" — must consult this, or the heuristic filters out exactly the cases
+// the pass exists to judge properly.
+func (c *Context) WhatIf() bool {
+	return c.whatIf
+}
+
+// EnableWhatIf marks the context as one whose proposals will be evaluated.
+func (c *Context) EnableWhatIf() {
+	c.whatIf = true
+}
+
+// Propose records a relocation the engine should evaluate.
+func (c *Context) Propose(r Relocation) {
+	c.proposals = append(c.proposals, r)
+}
+
+// Proposals returns the relocations a rule proposed during its check.
+func (c *Context) Proposals() []Relocation {
+	return c.proposals
 }
 
 // Pos returns the root-relative position of an AST node.

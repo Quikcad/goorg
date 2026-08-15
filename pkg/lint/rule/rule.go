@@ -17,6 +17,10 @@ type Rule struct {
 	Category Category
 	// Tier is what the rule needs in order to run.
 	Tier Tier
+	// Placement records what the rule's outcome depends on, which is what the
+	// what-if pass uses to tell a real objection to a relocation from a
+	// cosmetic one. The zero value makes a rule participate.
+	Placement Placement
 	// Summary is a single lowercase line, shown by `goorg rules`.
 	Summary string
 	// Doc is the long-form explanation shown by `goorg explain <id>`. It must

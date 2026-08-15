@@ -11,6 +11,7 @@ import (
 	"github.com/Quikcad/goorg/pkg/lint/diag"
 	"github.com/Quikcad/goorg/pkg/lint/rule"
 	"github.com/Quikcad/goorg/pkg/lint/suppress"
+	"github.com/Quikcad/goorg/pkg/lint/whatif"
 	"github.com/Quikcad/goorg/pkg/source/project"
 	"github.com/Quikcad/goorg/pkg/source/typed"
 )
@@ -23,6 +24,10 @@ type Options struct {
 	// Typed is the type-checked program, required when Tiers permits
 	// rule.Types. A Types rule is never invoked without it.
 	Typed *typed.Program
+	// WhatIf enables the relocation pass. With it off, a rule's proposals are
+	// reported as findings unexamined, which is the narrow form phase 5
+	// shipped.
+	WhatIf bool
 }
 
 // Result is the outcome of a run.
@@ -40,6 +45,9 @@ type Result struct {
 	Deferred int
 	// Suppressed is the number of findings silenced by inline directives.
 	Suppressed int
+	// Relocations counts proposed moves the what-if pass rejected because they
+	// would have made something else worse.
+	Relocations int
 }
 
 // Failed reports whether the run found anything at error severity.
@@ -77,7 +85,12 @@ func Run(p *project.Project, cfg *config.Config, set *rule.Set, opts Options) Re
 		res.Ran++
 
 		ctx := contextFor(r, p, opts.Typed, cfg.DecoderFor(r.ID))
-		for _, d := range r.Check(ctx) {
+		if opts.WhatIf {
+			ctx.EnableWhatIf()
+		}
+		found := r.Check(ctx)
+		found = append(found, res.judgeProposals(p, cfg, set, ctx, opts)...)
+		for _, d := range found {
 			// Rules report what is wrong and where; the runner is what decides
 			// whether that is an error or a warning.
 			d.RuleID = r.ID
@@ -94,6 +107,32 @@ func Run(p *project.Project, cfg *config.Config, set *rule.Set, opts Options) Re
 	diag.Sort(res.Diagnostics)
 	res.Counts = diag.Summarize(res.Diagnostics)
 	return res
+}
+
+// judgeProposals turns a rule's proposed relocations into findings, keeping
+// only the moves that would not make something else worse.
+func (r *Result) judgeProposals(p *project.Project, cfg *config.Config, set *rule.Set, ctx *rule.Context, opts Options) []diag.Diagnostic {
+	proposals := ctx.Proposals()
+	if len(proposals) == 0 {
+		return nil
+	}
+	if !opts.WhatIf {
+		// Without the pass, a proposal is reported as the rule intended it.
+		out := make([]diag.Diagnostic, 0, len(proposals))
+		for _, proposal := range proposals {
+			out = append(out, proposal.Finding)
+		}
+		return out
+	}
+
+	judge := &whatif.Judge{
+		Rules:    set.All(),
+		Severity: cfg.Severity,
+		Decoder:  cfg.DecoderFor,
+	}
+	result := judge.Evaluate(p, proposals)
+	r.Relocations += result.Rejected + result.Cyclic
+	return result.Accepted
 }
 
 // contextFor builds the context a rule's tier requires.

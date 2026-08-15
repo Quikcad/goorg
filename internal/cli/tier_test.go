@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -103,4 +104,55 @@ func TestTypeTierNotLoadedWhenUnused(t *testing.T) {
 	if strings.Contains(stdout, "goorg/type-tier-unavailable") {
 		t.Errorf("type tier was consulted although no type rule is enabled:\n%s", stdout)
 	}
+}
+
+// relocationProject has one unexported helper whose only consumer is another
+// file. Whether moving it is good advice depends entirely on the destination's
+// budget, which is what the what-if pass exists to measure.
+func relocationProject(limit string) map[string]string {
+	var caller strings.Builder
+	caller.WriteString("package b\n")
+	for i := range 15 {
+		fmt.Fprintf(&caller, "\nfunc F%d() int { return helper() }\n", i)
+	}
+	return map[string]string{
+		"go.mod":       "module example.com/reloc\n\ngo 1.25.0\n",
+		"pkg/a/b/a.go": "package b\n\nfunc Exported() int { return 0 }\n\nfunc helper() int { return 1 }\n",
+		"pkg/a/b/c.go": caller.String(),
+		".goorg.yaml": "version: 1\nrules:\n  \"*\": \"off\"\n" +
+			"  org/consumer-locality: warning\n  org/max-functions-per-file: error\n" +
+			"settings:\n  org/max-functions-per-file:\n    limit: " + limit + "\n" +
+			"  org/consumer-locality:\n    max_target_declarations: 99\n",
+	}
+}
+
+// TestWhatIfRejectsAMoveThatBreaksABudget is the pass working: the rule
+// proposing the move knows nothing about the budget, and the engine finds out
+// by making the move and looking.
+func TestWhatIfRejectsAMoveThatBreaksABudget(t *testing.T) {
+	t.Run("destination is full, so no advice", func(t *testing.T) {
+		root := fixture(t, relocationProject("15"))
+		stdout, _, _ := exec(t, nil, "check", "-root", root)
+		if strings.Contains(stdout, "consumer-locality") {
+			t.Errorf("advised a move that would break a budget:\n%s", stdout)
+		}
+	})
+
+	t.Run("destination has room, so the advice stands", func(t *testing.T) {
+		root := fixture(t, relocationProject("20"))
+		stdout, _, _ := exec(t, nil, "check", "-root", root)
+		if !strings.Contains(stdout, "helper is used only from") {
+			t.Errorf("withheld advice for a move that is safe:\n%s", stdout)
+		}
+	})
+
+	// Without the pass, the rule falls back to its own approximation, which is
+	// deliberately conservative rather than measured.
+	t.Run("--no-what-if reports without checking", func(t *testing.T) {
+		root := fixture(t, relocationProject("15"))
+		stdout, _, _ := exec(t, nil, "check", "-root", root, "-no-what-if")
+		if !strings.Contains(stdout, "helper is used only from") {
+			t.Errorf("the unexamined form should still advise:\n%s", stdout)
+		}
+	})
 }

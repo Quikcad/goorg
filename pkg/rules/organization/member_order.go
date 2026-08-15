@@ -19,11 +19,12 @@ type memberOrderSettings struct {
 }
 
 var memberOrder = &rule.Rule{
-	ID:       "org/member-order",
-	Category: rule.Organization,
-	Tier:     rule.Syntax,
-	Summary:  "declarations appear in the canonical file order",
-	Default:  diag.Error,
+	ID:        "org/member-order",
+	Category:  rule.Organization,
+	Tier:      rule.Syntax,
+	Placement: rule.PlacementOrder,
+	Summary:   "declarations appear in the canonical file order",
+	Default:   diag.Error,
 	Doc: `Declarations appear in one order: enums, package variables, interfaces,
 then each type followed by its factory and its methods, then functions.
 

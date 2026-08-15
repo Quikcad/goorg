@@ -106,13 +106,32 @@ rule for free. It is also a substantial piece of machinery: rules must become
 re-runnable against a mutated project model, and the engine needs a cycle guard
 for the case where A wants to move to B's file and B wants to move to A's.
 
-**Recommendation: (b), but not first.** Ship `org/consumer-locality` reporting
-only the unambiguous case — a declaration whose sole consuming file is another
-file, where the target file is under every budget with room to spare. That
-subset needs no what-if machinery and covers most real findings. Add the general
-mechanism when the narrow version proves it is worth it.
+**Built: (b).** `pkg/lint/whatif` cuts the declaration's source out of one file,
+appends it to the other, reparses both, and re-runs the rules whose outcome
+depends on file membership. The proposal survives only if the violation count
+does not rise. `org/consumer-locality` therefore reads no other rule's settings
+and cannot go stale when a new budget is added.
 
-This is [open question 1](#open-questions).
+Three things the implementation had to settle that the sketch above did not:
+
+- **Ordering rules are excluded.** Where the moved declaration lands inside its
+  new file is a separate and always-available fix, so letting `member-order`
+  veto the move would reject every relocation. Rules declare this with
+  `rule.Placement`; the default participates, and the three ordering rules opt
+  out.
+- **Type-tier rules are excluded.** Judging one move would mean reloading and
+  type-checking the module, which costs more than the answer is worth.
+- **The rule's own fallback must stand down.** `max_target_declarations` was
+  filtering out exactly the cases the pass exists to judge, so it now applies
+  only when the pass is off — `Context.WhatIf()` tells the rule which world it
+  is in.
+
+The cycle guard drops proposals that move declarations in both directions
+between the same pair of files: each move creates the other's finding, so
+acting on either produces the one goorg just reported.
+
+`--no-what-if` restores the unexamined form. The pass costs about 20 ms on
+goorg itself.
 
 ---
 

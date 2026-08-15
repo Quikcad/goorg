@@ -327,22 +327,41 @@ The general question is undecidable and the `Doc` says so.
 
 ---
 
-## Phase 7 — The what-if pass
+## Phase 7 — The what-if pass — **complete**
 
 **Goal:** `org/consumer-locality`'s full exception mechanism.
 
-**Blocked by:** Phase 5's narrow form shipping and proving the general
-mechanism is worth building. Do not start this before that evidence exists.
+- [x] Rules emit a *proposed relocation* instead of a finding
+      (`rule.Relocation`, `Context.Propose`)
+- [x] `pkg/lint/whatif` applies a relocation to an in-memory project copy and
+      re-runs the rules that depend on file membership
+- [x] A finding survives only if the total violation count does not rise
+- [x] **Cycle guard** — proposals moving declarations both ways between the
+      same pair of files are dropped, and counted so the silence is visible
+- [x] Rules are re-runnable against a mutated project model; the move is
+      textual and both files are reparsed, so every position stays honest
+- [x] `--no-what-if` restores the unexamined form
 
-- [ ] Rules may emit a *proposed relocation* instead of a finding
-- [ ] Engine applies a relocation to an in-memory project copy and re-runs the
-      `org/` family
-- [ ] Finding survives only if the total violation count does not increase
-- [ ] **Cycle guard** — A's sole consumer is in B and B's sole consumer is in A;
-      without a guard the two findings each propose a move that creates the other
-- [ ] Rules become re-runnable against a mutated project model
+**`rule.Placement` is the piece the specification did not anticipate.** Without
+it every relocation is rejected, because moving a declaration to the end of
+another file always upsets `org/member-order`. Ordering within the new home is a
+separate and always-available fix, so those rules declare `PlacementOrder` and
+sit out the comparison. The zero value participates, so a new rule takes part
+unless it opts out.
 
-→ [The what-if problem](docs/file-organization.md#the-what-if-problem)
+**The rule's own fallback had to stand down.** `max_target_declarations` was
+pre-filtering exactly the cases the pass exists to judge, so it now applies only
+when the pass is off. `Context.WhatIf()` tells a rule which world it is in.
+
+**Cost:** about 20 ms on goorg itself, on top of 665 ms for both tiers.
+
+### Was it worth building?
+
+Honestly: not yet demonstrated on this codebase. Across phases 5 and 6 the
+narrow form's approximation never once suppressed a real finding here, so the
+pass has not yet changed an answer outside its own tests. It is built, correct
+and tested — but the evidence that a project needs it will come from a
+repository with more single-consumer helpers than goorg has.
 
 ---
 

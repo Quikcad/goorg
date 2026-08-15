@@ -14,11 +14,12 @@ type privateFunctionsLastSettings struct {
 }
 
 var privateFunctionsLast = &rule.Rule{
-	ID:       "org/private-functions-last",
-	Category: rule.Organization,
-	Tier:     rule.Syntax,
-	Summary:  "unexported functions come after every exported one",
-	Default:  diag.Error,
+	ID:        "org/private-functions-last",
+	Category:  rule.Organization,
+	Tier:      rule.Syntax,
+	Placement: rule.PlacementOrder,
+	Summary:   "unexported functions come after every exported one",
+	Default:   diag.Error,
 	Doc: `Unexported functions come after every exported function in the file.
 
 	func Parse(s string) (*Doc, error)     OK — exported first

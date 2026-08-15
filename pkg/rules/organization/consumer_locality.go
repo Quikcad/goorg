@@ -16,8 +16,9 @@ import (
 type consumerLocalitySettings struct {
 	CheckFunctions bool `yaml:"check_functions"`
 	CheckEnums     bool `yaml:"check_enums"`
-	// MaxTargetDeclarations bounds how full the destination file may be before
-	// the rule stays quiet. See the note on the what-if problem below.
+	// MaxTargetDeclarations bounds how full the destination may be before the
+	// rule stays quiet. It is the fallback used when the what-if pass is off;
+	// with the pass on, the engine measures instead of guessing.
 	MaxTargetDeclarations int  `yaml:"max_target_declarations"`
 	IgnoreTests           bool `yaml:"ignore_tests"`
 	// SkipHelperFiles leaves files that export nothing alone.
@@ -59,13 +60,16 @@ Deliberately silent when there is no single right answer: no consumers at all
 genuinely shared), or consumers only outside the package. Methods are never
 relocated — org/type-cohesion puts them with their type.
 
-This ships as the narrow form. The specification allows a declaration to move
-unless the move would break another rule, which needs the engine to evaluate a
-tree that does not exist yet. Until that exists, the rule stays quiet when the
-destination file already holds max_target_declarations or more top-level
-declarations, which approximates "has room" without this rule reading another
-rule's configuration. The approximation is conservative: it misses real
-findings rather than proposing a move that creates a new violation.
+The rule does not decide whether the move is safe. It proposes the relocation,
+and the engine makes the move on an in-memory copy and re-runs the rules that
+depend on which file a declaration lives in. The proposal survives only if
+nothing got worse — so this rule never has to read another rule's settings, and
+never goes stale when a new budget is added.
+
+With the what-if pass off, max_target_declarations is the fallback: a
+declaration count standing in for "the destination has room". It is
+deliberately conservative, missing real findings rather than proposing a move
+that creates a violation.
 
 Configure in .goorg.yaml:
 
@@ -86,20 +90,21 @@ Configure in .goorg.yaml:
 			return settingsError(err)
 		}
 
-		var out []diag.Diagnostic
 		for _, pkg := range c.Typed.Sound() {
-			out = append(out, checkLocality(pkg, &s)...)
+			proposeMoves(c, pkg, &s)
 		}
-		diag.Sort(out)
-		return out
+		// Every finding this rule produces is a proposed relocation, so it
+		// returns none directly; the engine decides which survive.
+		return nil
 	},
 }
 
-// checkLocality reports declarations whose sole consuming file is another one.
-func checkLocality(pkg *typed.Package, s *consumerLocalitySettings) []diag.Diagnostic {
+// proposeMoves offers a relocation for each declaration whose sole consuming
+// file is another one.
+func proposeMoves(c *rule.Context, pkg *typed.Package, s *consumerLocalitySettings) {
 	homes := relocatable(pkg, s)
 	if len(homes) == 0 {
-		return nil
+		return
 	}
 	sizes := declarationCounts(pkg)
 
@@ -119,7 +124,6 @@ func checkLocality(pkg *typed.Package, s *consumerLocalitySettings) []diag.Diagn
 		consumers[obj][where] = true
 	}
 
-	var out []diag.Diagnostic
 	for obj, files := range consumers {
 		// Exactly one consuming file, and it is not where the declaration
 		// lives. Anything else has no single right answer.
@@ -131,20 +135,29 @@ func checkLocality(pkg *typed.Package, s *consumerLocalitySettings) []diag.Diagn
 		if target == home {
 			continue
 		}
-		if sizes[target] >= s.MaxTargetDeclarations {
+		// The count is a stand-in for "the destination has room". With the
+		// what-if pass on, the engine measures instead, and applying the
+		// stand-in first would filter out the very cases it is meant to judge.
+		if !c.WhatIf() && sizes[target] >= s.MaxTargetDeclarations {
 			continue
 		}
-		out = append(out, diag.Diagnostic{
-			Position: diag.Position{
-				Path: home,
-				Line: pkg.Fset.Position(obj.Pos()).Line,
-				Col:  pkg.Fset.Position(obj.Pos()).Column,
+		line := pkg.Fset.Position(obj.Pos()).Line
+		c.Propose(rule.Relocation{
+			Name: obj.Name(),
+			From: home,
+			To:   target,
+			Line: line,
+			Finding: diag.Diagnostic{
+				Position: diag.Position{
+					Path: home,
+					Line: line,
+					Col:  pkg.Fset.Position(obj.Pos()).Column,
+				},
+				Message: fmt.Sprintf("%s is used only from %s", obj.Name(), target),
+				Help:    fmt.Sprintf("move it into %s, beside its only consumer", target),
 			},
-			Message: fmt.Sprintf("%s is used only from %s", obj.Name(), target),
-			Help:    fmt.Sprintf("move it into %s, beside its only consumer", target),
 		})
 	}
-	return out
 }
 
 // relocatable returns the declarations the rule may propose moving, mapped to

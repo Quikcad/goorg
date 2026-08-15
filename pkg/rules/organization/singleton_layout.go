@@ -19,11 +19,12 @@ type singletonLayoutSettings struct {
 }
 
 var singletonLayout = &rule.Rule{
-	ID:       "org/singleton-layout",
-	Category: rule.Organization,
-	Tier:     rule.Syntax,
-	Summary:  "a singleton file is laid out as state, accessor, then exported functions",
-	Default:  diag.Error,
+	ID:        "org/singleton-layout",
+	Category:  rule.Organization,
+	Tier:      rule.Syntax,
+	Placement: rule.PlacementOrder,
+	Summary:   "a singleton file is laid out as state, accessor, then exported functions",
+	Default:   diag.Error,
 	Doc: `A file declaring a singleton is laid out as the singleton's variables,
 then the unexported instance function, then the exported accessors.
 
