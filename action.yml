@@ -1,0 +1,117 @@
+name: goorg
+description: Check that a Go project follows the house standard for layout, organization, and code patterns.
+author: Quikcad
+
+branding:
+  icon: check-square
+  color: blue
+
+inputs:
+  version:
+    description: 'goorg release to run, e.g. "v1.2.3". Defaults to the latest release.'
+    required: false
+    default: latest
+  args:
+    description: Arguments passed to goorg.
+    required: false
+    default: check ./...
+  working-directory:
+    description: Directory to run goorg in.
+    required: false
+    default: "."
+  config:
+    description: Path to a config file, overriding discovery of .goorg.yaml.
+    required: false
+    default: ""
+  fail-on:
+    description: 'Lowest severity that fails the job: error or warning.'
+    required: false
+    default: error
+  format:
+    description: 'Output format: auto, text, github, or json. "auto" produces inline PR annotations.'
+    required: false
+    default: auto
+
+outputs:
+  exit-code:
+    description: "goorg's exit code: 0 clean, 1 findings, 2 goorg could not run."
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install goorg
+      shell: bash
+      env:
+        GOORG_VERSION: ${{ inputs.version }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        version="$GOORG_VERSION"
+        if [ "$version" = "latest" ]; then
+          version=$(gh release view --repo Quikcad/goorg --json tagName --jq .tagName)
+        fi
+        # Release assets are named without the leading "v".
+        bare="${version#v}"
+
+        case "$(uname -s)" in
+          Linux)   os=linux ;;
+          Darwin)  os=darwin ;;
+          MINGW*|MSYS*|CYGWIN*) os=windows ;;
+          *) echo "::error::unsupported runner OS $(uname -s)"; exit 1 ;;
+        esac
+        case "$(uname -m)" in
+          x86_64|amd64) arch=amd64 ;;
+          arm64|aarch64) arch=arm64 ;;
+          *) echo "::error::unsupported runner architecture $(uname -m)"; exit 1 ;;
+        esac
+
+        ext=tar.gz
+        [ "$os" = windows ] && ext=zip
+        asset="goorg_${bare}_${os}_${arch}.${ext}"
+
+        dir="${RUNNER_TEMP}/goorg"
+        mkdir -p "$dir"
+        echo "downloading $asset ($version)"
+        gh release download "$version" --repo Quikcad/goorg --pattern "$asset" --dir "$dir"
+
+        if [ "$ext" = zip ]; then
+          unzip -q "$dir/$asset" -d "$dir"
+        else
+          tar -xzf "$dir/$asset" -C "$dir"
+        fi
+        chmod +x "$dir/goorg" 2>/dev/null || true
+        echo "$dir" >> "$GITHUB_PATH"
+
+    - name: Run goorg
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GOORG_ARGS: ${{ inputs.args }}
+        GOORG_CONFIG: ${{ inputs.config }}
+        GOORG_FAIL_ON: ${{ inputs.fail-on }}
+        GOORG_FORMAT: ${{ inputs.format }}
+      run: |
+        set -uo pipefail
+
+        flags=(--format="$GOORG_FORMAT" --fail-on="$GOORG_FAIL_ON")
+        if [ -n "$GOORG_CONFIG" ]; then
+          flags+=(--config="$GOORG_CONFIG")
+        fi
+
+        goorg version
+        # goorg accepts flags in any position, so the caller's args can be
+        # appended verbatim without parsing them here.
+        # shellcheck disable=SC2086 -- GOORG_ARGS is a user-supplied argument list.
+        goorg $GOORG_ARGS "${flags[@]}"
+        code=$?
+
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        case "$code" in
+          0) echo "::notice::goorg found no violations" ;;
+          1) echo "::error::goorg reported violations" ;;
+          *) echo "::error::goorg could not run (exit $code)" ;;
+        esac
+        exit "$code"

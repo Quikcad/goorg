@@ -1,0 +1,54 @@
+name: Bug report
+description: goorg crashed, missed a violation, or reported one that is not real.
+labels: [bug]
+
+body:
+  - type: input
+    id: version
+    attributes:
+      label: goorg version
+      description: Output of `goorg version`.
+      placeholder: goorg v1.2.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What went wrong
+      options:
+        - False positive — reported a violation that is not one
+        - False negative — missed a violation it should have caught
+        - Crash or exit code 2
+        - Wrong position, message, or output format
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest tree that reproduces it
+      description: >-
+        File paths and contents. A false positive without a reproducible tree
+        usually cannot be fixed.
+      placeholder: |
+        internal/httpclient/client.go:
+          package client
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: .goorg.yaml
+      description: Leave blank if you have no config file.
+      render: yaml
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true

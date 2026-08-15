@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+  # goorg deliberately carries almost no dependencies, so this is a small
+  # surface — which is exactly why an unattended update here is safe.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      github-actions:
+        patterns: ["*"]

@@ -1,0 +1,79 @@
+name: Rule proposal
+description: Propose a new rule for the house standard.
+labels: [rule-proposal]
+
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        A rule is a policy decision before it is code. It is cheaper to argue
+        about the policy here than about the diff later.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - dir — directory correctness (where code lives)
+        - org — organizational correctness (how code is split across files)
+        - pat — pattern correctness (recurring code shapes and naming)
+    validations:
+      required: true
+
+  - type: input
+    id: id
+    attributes:
+      label: Proposed rule ID
+      placeholder: org/interface-at-consumer
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Conforming and violating code
+      render: go
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: What breaks without this rule
+      description: >-
+        Not "it's inconsistent" — what actually goes wrong. A reader misled, a
+        refactor made impossible, a bug that only reproduces in CI. If the
+        honest answer is "nothing, I just prefer it", it is not a rule.
+    validations:
+      required: true
+
+  - type: textarea
+    id: false-positives
+    attributes:
+      label: Where would it fire on legitimate code?
+      description: >-
+        A rule that misfires trains people to switch it off, which costs more
+        than the rule was worth.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Proposed default severity
+      description: >-
+        A rule shipping as `error` breaks every consumer's build on upgrade.
+      options:
+        - warning
+        - error
+        - "off (opt-in)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: This is checkable from syntax alone — it does not need type information.
+          required: true

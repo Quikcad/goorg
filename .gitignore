@@ -1,0 +1,36 @@
+# Compiled binaries
+/goorg
+/bin/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test & coverage artifacts
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace files — intentionally local, never committed
+go.work
+go.work.sum
+
+# Dependency directory (we use modules, not vendoring)
+/vendor/
+
+# Editors & tooling
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local overrides for the tool's own config
+.goorg.local.yaml
+
+# Environment
+.env
+.env.local

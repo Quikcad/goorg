@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How a rule works and why
+    url: https://github.com/Quikcad/goorg#rules
+    about: Run `goorg explain <rule>` for the rationale, examples, and options.

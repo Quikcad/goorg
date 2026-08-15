@@ -1,0 +1,99 @@
+# Build system for goorg. Install go-task: https://taskfile.dev/installation
+#
+#   task            # fmt, vet, test, and dogfood — everything CI runs
+#   task --list     # show all tasks
+version: "3"
+
+vars:
+  BINARY: goorg
+  PKG: github.com/Quikcad/goorg
+  # `git describe` fails in a fresh clone with no tags, so fall back to "dev".
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  LDFLAGS: -s -w -X {{.PKG}}/internal/buildinfo.version={{.VERSION}}
+
+tasks:
+  default:
+    desc: Run everything CI runs, locally
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test
+      - task: dogfood
+
+  build:
+    desc: Build the goorg binary into ./bin
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - bin/{{.BINARY}}
+    cmds:
+      - go build -trimpath -ldflags '{{.LDFLAGS}}' -o bin/{{.BINARY}} ./cmd/goorg
+
+  install:
+    desc: Install goorg into $GOBIN
+    cmds:
+      - go install -trimpath -ldflags '{{.LDFLAGS}}' ./cmd/goorg
+
+  test:
+    desc: Run the test suite
+    cmds:
+      - go test ./... {{.CLI_ARGS}}
+
+  cover:
+    desc: Run tests with coverage and write an HTML report
+    cmds:
+      - go test -coverprofile=coverage.txt -covermode=atomic ./...
+      - go tool cover -html=coverage.txt -o coverage.html
+      - echo "coverage report: coverage.html"
+
+  fmt:
+    desc: Format all Go source
+    cmds:
+      - go fmt ./...
+
+  fmt:check:
+    desc: Fail if any Go source is not gofmt-clean
+    cmds:
+      - |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "not gofmt-clean:" >&2
+          echo "$unformatted" >&2
+          exit 1
+        fi
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  tidy:
+    desc: Tidy and verify module dependencies
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  tidy:check:
+    desc: Fail if go.mod or go.sum is not tidy
+    cmds:
+      - go mod tidy -diff
+
+  dogfood:
+    desc: Run goorg against its own source tree
+    deps: [build]
+    cmds:
+      - ./bin/{{.BINARY}} check ./...
+
+  rules:
+    desc: List every rule and its configured severity
+    deps: [build]
+    cmds:
+      - ./bin/{{.BINARY}} rules
+
+  clean:
+    desc: Remove build and coverage artifacts
+    cmds:
+      - rm -rf bin dist coverage.txt coverage.html

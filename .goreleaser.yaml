@@ -1,0 +1,79 @@
+# GoReleaser configuration — https://goreleaser.com
+# Validate locally with: goreleaser check
+version: 2
+
+project_name: goorg
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: goorg
+    main: ./cmd/goorg
+    binary: goorg
+    env:
+      # A statically linked binary runs in scratch and distroless CI images,
+      # which is where a lint tool most often lands.
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/Quikcad/goorg/internal/buildinfo.version={{ .Version }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: goorg
+    # The composite action in action.yml derives asset names from this
+    # template; changing it means changing that download logic too.
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+
+checksums:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: New rules
+      regexp: '^.*?feat\(rules?\)!?:.+$'
+      order: 0
+    - title: Features
+      regexp: '^.*?feat!?:.+$'
+      order: 1
+    - title: Fixes
+      regexp: '^.*?fix!?:.+$'
+      order: 2
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - Merge pull request
+
+release:
+  draft: false
+  prerelease: auto
+  footer: |
+    ## Install
+
+    ```sh
+    go install github.com/Quikcad/goorg/cmd/goorg@{{ .Tag }}
+    ```
+
+    Or in GitHub Actions:
+
+    ```yaml
+    - uses: Quikcad/goorg@{{ .Tag }}
+    ```
