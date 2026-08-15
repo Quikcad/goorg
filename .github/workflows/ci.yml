@@ -107,6 +107,42 @@ jobs:
       - name: Check goorg with goorg
         run: ./bin/goorg check --format=github ./...
 
+  release-config:
+    name: Release config
+    runs-on: ubuntu-latest
+    # The release path is exercised once a year and breaks silently in between.
+    # It pointed at ./cmd/goorg for four phases after that package moved.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: The build target in .goreleaser.yaml exists
+        run: |
+          set -euo pipefail
+          target=$(grep -oP '^\s*main:\s*\K\S+' .goreleaser.yaml)
+          echo "goreleaser builds $target"
+          go build -o /dev/null "$target"
+
+      - name: The action downloads what goreleaser publishes
+        run: |
+          set -euo pipefail
+          # goreleaser names archives <project>_<version>_<os>_<arch>.<ext>;
+          # action.yml reconstructs that name to fetch one. If either side
+          # changes its template alone, every release becomes uninstallable.
+          grep -q 'name_template: >-' .goreleaser.yaml
+          grep -q '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}' .goreleaser.yaml
+          grep -q 'asset="goorg_${bare}_${os}_${arch}.${ext}"' action.yml
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+
   build:
     name: Cross-compile
     runs-on: ubuntu-latest

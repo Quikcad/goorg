@@ -180,7 +180,6 @@ excluding 428 generated ones.
 | `org/max-functions-per-file` | 2 | 5 | 13 | 21 | 12 | **15** | 8% |
 | `org/max-public-functions` | 0 | 1 | 4 | 7 | 5 | **6** | 7% |
 | `org/max-private-functions` | 1 | 4 | 9 | 17 | 3 | **5** | 20% |
-| `org/max-file-lines` | 107 | 303 | 683 | 1109 | 600 | **600** | 12% |
 | `logic/max-object-members` (fields) | 3 | 5 | 9 | 12 | 12 | **12** | 5% |
 | `logic/max-object-members` (methods) | 3 | 6 | 12 | 20 | 15 | **15** | 7% |
 | `logic/max-condition-operands` | 1 | 1 | 2 | 2 | 4 | **4** | 1% |
@@ -204,6 +203,11 @@ authority, and two cases matter:
 - **`logic/max-condition-operands`.** p99 is 4 and p95 is 2, so a limit of 4
   flags about 1% of conditions. The guess was well calibrated by accident. It
   could tighten to 3 at roughly 2% and still be comfortable.
+
+`org/max-file-lines` appeared in this table until phase 8. It was never
+implemented: `logic/max-function-lines` measures the same thing at a finer
+grain, and a file budget on top of a function budget would report one problem
+twice.
 
 The last three were added in phase 6, measured the same way. `max-nesting-depth`
 at 3 sits exactly at p95, which is why it found seven real offenders in goorg's

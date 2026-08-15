@@ -757,7 +757,7 @@ we want it in one tool rather than that it is unavailable.
 - [x] 37. **`logic/single-case-switch`** · syntax — A `switch` with one case. Either an `if`, or a missing case.
 - [x] 38. **`logic/identical-branches`** · syntax — Two branches of the same `if`/`switch` with identical bodies. Either a copy-paste bug or a condition that does not matter.
 - [x] 39. **`logic/empty-branch`** · syntax — A branch with an empty body and no explanatory comment.
-- [x] 40. **`logic/max-function-lines`** · syntax — Function length cap. Blunt but effective; overlaps `org/max-file-lines` at a finer grain.
+- [x] 40. **`logic/max-function-lines`** · syntax — Function length cap. Blunt but effective; measures at a finer grain than a whole-file budget.
 - [x] 41. **`logic/max-function-params`** · syntax — More than N parameters. Past four, call sites become positional puzzles; wants a config struct.
 - [x] 42. **`logic/max-return-values`** · syntax — More than N results, `error` excluded. Callers cannot remember which is which; wants a named struct.
 - [x] 43. **`logic/naked-return`** · syntax — A bare `return` in a function longer than N lines, where the reader can no longer see what is being returned. (**exists**: `nakedret`)

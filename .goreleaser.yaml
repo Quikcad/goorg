@@ -10,7 +10,7 @@ before:
 
 builds:
   - id: goorg
-    main: ./cmd/goorg
+    main: ./cmd/lint/goorg
     binary: goorg
     env:
       # A statically linked binary runs in scratch and distroless CI images,
@@ -69,7 +69,7 @@ release:
     ## Install
 
     ```sh
-    go install github.com/Quikcad/goorg/cmd/goorg@{{ .Tag }}
+    go install github.com/Quikcad/goorg/cmd/lint/goorg@{{ .Tag }}
     ```
 
     Or in GitHub Actions:

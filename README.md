@@ -126,19 +126,19 @@ Elsewhere use `--format=json` to feed another tool, or `--format=text`
 
 ### Adopting on an existing codebase
 
-A codebase that predates the standard will not pass on day one. Two knobs make
-adoption a ratchet rather than a cliff:
+A codebase that predates the standard will not pass on day one, and that is not
+a reason to weaken the standard. `--max-warnings` is a ratchet: set it to
+today's count so new code cannot add to it, then lower it as batches get
+cleared.
 
 ```sh
-# Report everything, fail on nothing yet.
-goorg check ./... --fail-on=warning --max-warnings=99999
-
-# Then tighten the ceiling as the count falls.
-goorg check ./... --max-warnings=40
+goorg check ./... --fail-on=warning --max-warnings=99999   # see where you stand
+goorg check ./... --max-warnings=140                       # then ratchet down
 ```
 
-Or set the noisy rules to `warning` in `.goorg.yaml` and promote them to
-`error` one at a time.
+[docs/adoption.md](docs/adoption.md) has the full sequence, including which
+rules are cheap to clear in bulk and which are design decisions to leave for
+last.
 
 ---
 
@@ -261,6 +261,16 @@ The type tier is only loaded when a type-tier rule is actually enabled, so a
 project that switches them off pays nothing for them.
 
 ---
+
+## Relationship to other tools
+
+`gofmt` stays authoritative on whitespace: no goorg rule reports on anything
+gofmt would rewrite, and a test harness reformats every fixture to prove it.
+
+`golangci-lint` covers what a statement does wrong, and goorg deliberately does
+not duplicate it — nine proposed rules were denied for that reason. The
+`.golangci.yml` covering that gap is in
+[docs/adoption.md](docs/adoption.md#where-goorg-stops).
 
 ## Develop
 

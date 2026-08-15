@@ -367,22 +367,39 @@ repository with more single-consumer helpers than goorg has.
 
 ## Phase 8 — Distribution
 
-**Goal:** make it consumable. Most scaffolding already exists and needs
-verifying against the real binary rather than writing from scratch.
+**Goal:** make it consumable.
 
-**Blocked by:** Phase 2 at the earliest — there must be rules worth shipping.
+- [x] `.goreleaser.yaml` built `./cmd/goorg`, a package that had not existed
+      since [D2](docs/decisions.md#d2--goorg-adopts-domains-in-both-pkg-and-cmd).
+      The first tagged release would have failed. Fixed, and CI gained a
+      `release-config` job that builds the target and checks the archive-name
+      templates in `.goreleaser.yaml` and `action.yml` still agree.
+- [x] Adoption guide — [docs/adoption.md](docs/adoption.md)
+- [x] The `.golangci.yml` covering the nine denied **exists** rules, so the gap
+      stays deliberate *(carried over from phase 6)*
+- [x] `README.md` rewritten against the shipped rule set
+- [x] `CLAUDE.md` rewritten against the real engine, including both tiers,
+      `Placement`, and the calibrate-don't-guess rule for budgets
+- [ ] **First tagged release.** Needs a GitHub remote and a pushed tag, which
+      is yours to do:
 
-- [ ] Verify `action.yml` end to end against a real release; the asset-name
-      template is coupled to `.goreleaser.yaml` and has never been exercised
-- [ ] First tagged release through the release workflow
-- [ ] Adoption guide: `--fail-on=warning` plus `--max-warnings` as a ratchet for
-      codebases that predate the standard
-- [ ] Rewrite `README.md`'s rules table — it still lists the nine rules of the
-      deleted sketch, none of which survive into these specifications
-- [ ] Rewrite `CLAUDE.md`'s architecture and "adding a rule" sections against the
-      real engine, including the tier split
-- [ ] Publish the standard itself, not just the tool — the three `docs/` files
-      are the house standard and are the reason anyone adopts the linter
+      git remote add origin git@github.com:Quikcad/goorg.git
+      git push -u origin main
+      git tag -a v0.1.0 -m "first release" && git push origin v0.1.0
+
+- [ ] **Verify `action.yml` against that release.** The download logic is
+      checked statically but has never fetched a real asset. Run the action in
+      a scratch repository once v0.1.0 exists.
+
+### Before tagging
+
+- [ ] Re-measure the budgets against a real Quikcad repository. Every default
+      is calibrated against the Go standard library, which is a proxy for
+      "typical Go" and not for yours —
+      [D5](docs/decisions.md#d5--budget-defaults-calibrated-against-a-measured-corpus).
+- [ ] Reconcile [D7](docs/decisions.md#d7--disposition-of-the-50-proposals)
+      against the ticked list in `logic-organization.md`. They disagree on 19
+      of 50; the shipped set follows D7.
 
 ---
 

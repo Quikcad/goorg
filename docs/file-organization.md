@@ -92,7 +92,7 @@ Two ways to build it:
 
 **(a) The rule hard-codes the budgets.** `org/consumer-locality` reads the
 configured limits of `org/max-functions-per-file`, `org/max-public-functions`,
-`org/max-private-functions` and `org/max-file-lines`, and simulates the move
+`org/max-private-functions` and `org/type-cohesion`, and simulates the move
 itself. Simple to write. Couples one rule to five others, and silently goes
 stale the moment a sixth budget rule is added — the failure mode is a
 recommendation that creates a new violation, which is the worst possible output
