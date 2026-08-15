@@ -148,7 +148,7 @@ func checkVarBlocks(c *rule.Context, f *fileDecls) []diag.Diagnostic {
 	return out
 }
 
-func describe(d decl) string {
+func describe(d member) string {
 	switch {
 	case d.isMethod:
 		return fmt.Sprintf("method %s.%s", d.owner, d.name)

@@ -15,6 +15,8 @@ import (
 
 // Exit codes. These are contractual: CI configurations branch on them, so they
 // may not be reassigned or collapsed.
+//
+//goorg:ignore logic/iota-candidate — the literal values are the published contract, not an ordering
 const (
 	// ExitOK means no findings at or above the failure threshold.
 	ExitOK = 0

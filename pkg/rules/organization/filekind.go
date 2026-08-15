@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/Quikcad/goorg/pkg/source/decl"
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
@@ -73,11 +74,11 @@ func declaresSyncOnce(d *ast.GenDecl) bool {
 		if !ok {
 			continue
 		}
-		if vs.Type != nil && isSelector(vs.Type, "sync", "Once") {
+		if vs.Type != nil && decl.IsSelector(vs.Type, "sync", "Once") {
 			return true
 		}
 		for _, v := range vs.Values {
-			if isSelector(v, "sync", "Once") {
+			if decl.IsSelector(v, "sync", "Once") {
 				return true
 			}
 		}

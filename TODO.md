@@ -6,7 +6,7 @@ Implementation plan, derived from the three specifications:
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
 - [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
-**27 specified rules: 22 syntax-tier, 5 type-tier.** 16 implemented.
+**27 specified rules: 22 syntax-tier, 5 type-tier.** All 22 syntax-tier rules implemented.
 
 Decisions that bind implementation are recorded in
 [`docs/decisions.md`](docs/decisions.md).
@@ -201,31 +201,36 @@ tree produces one finding per defect.
 
 ---
 
-## Phase 4 — `logic/` family, syntax subset
+## Phase 4 — `logic/` and `pat/`, syntax subset — **complete**
 
-**Goal:** 6 of 9 specified logic rules.
+**Goal:** the four syntax-tier `logic/` rules and both `pat/` rules.
 
-**Blocked by:** Phase 1. Independent of Phases 2–3; can run in parallel.
+- [x] `pat/expand-struct-definition` — done first, as the sharpest test of the
+      gofmt conformance harness
+- [x] `logic/max-condition-operands` — including mixed `&&`/`||` without parens
+- [x] `logic/max-object-members`
+- [x] `logic/iota-candidate`
+- [x] `logic/prefer-guard-clause`
+- [x] `pat/factory-naming` — `scope: prefixed` only
+- [x] `pkg/source/decl` extracted so the enum and factory classifiers exist
+      once, shared by `org/member-order`, `logic/iota-candidate`,
+      `org/type-cohesion` and `pat/factory-naming`
+- [x] `.goorg.yaml` enables all 6; `task dogfood` passes
 
-- [ ] `pat/expand-struct-definition` — do this one first. Detection is exact
-      (compare the line of `Fields.Opening` and `Fields.Closing`), it has no
-      heuristic and no false positives, and it is the sharpest test of the gofmt
-      conformance harness.
-- [ ] `logic/max-condition-operands`
-- [ ] `logic/max-object-members`
-- [ ] `logic/iota-candidate` — shares the enum classifier with
-      `org/member-order`; build it once
-- [ ] `logic/prefer-guard-clause`
-- [ ] `pat/factory-naming` — lives in `pkg/rules/pattern`; ship `scope: prefixed` only. `all-factories`
-      flags `Parse`, `Open`, `Dial`, `MustCompile` and every other established
-      idiom; it stays opt-in and undocumented in `goorg init`.
-- [ ] Decide the imported-result-type gap in `factory-naming`: skip, guess, or
-      promote the rule to the type tier
-      → [logic open question 7](docs/logic-organization.md#open-questions)
-- [ ] Enable all 6 here and fix what they find
+**Imported result types are skipped** by `pat/factory-naming`, resolving
+[logic open question 7](docs/logic-organization.md#open-questions). An imported
+interface is syntactically indistinguishable from an imported struct, and
+guessing would misname every constructor returning an error-like interface. The
+gap is real and recorded; closing it needs the type tier.
 
-**Exit criteria:** goorg's own tree passes all 6; gofmt conformance harness
-green, specifically for `expand-struct-definition`.
+**Exit criteria met:** goorg passes all 22 of its own rules.
+
+### Deferred out of Phase 4
+
+- [ ] `logic/max-object-members` counts methods across the package but reports
+      at the type declaration. A type whose methods are split across
+      build-constrained files is counted once, which is right, but the finding
+      does not say which file the excess methods are in.
 
 ---
 

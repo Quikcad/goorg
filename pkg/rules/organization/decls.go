@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/Quikcad/goorg/pkg/source/decl"
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
@@ -63,8 +64,8 @@ func varSection(d *ast.GenDecl, sections map[string]section) section {
 	return sect
 }
 
-// decl is one top-level declaration, classified.
-type decl struct {
+// member is one top-level declaration, classified.
+type member struct {
 	node ast.Decl
 	sect section
 	// owner is the type a method or factory belongs to, or "" for anything
@@ -82,29 +83,29 @@ type decl struct {
 	isMethod bool
 }
 
-func classifyGen(d *ast.GenDecl, enums map[string]bool, sections map[string]section) decl {
+func classifyGen(d *ast.GenDecl, enums map[string]bool, sections map[string]section) member {
 	switch d.Tok {
 	case token.CONST:
-		return decl{node: d, sect: sectionEnums, name: firstName(d)}
+		return member{node: d, sect: sectionEnums, name: firstName(d)}
 	case token.VAR:
-		return decl{node: d, sect: varSection(d, sections), name: firstName(d)}
+		return member{node: d, sect: varSection(d, sections), name: firstName(d)}
 	case token.TYPE:
 		return classifyType(d, enums)
 	default:
 		// import declarations and anything else the parser produces
-		return decl{node: d, sect: sectionEnums, name: firstName(d)}
+		return member{node: d, sect: sectionEnums, name: firstName(d)}
 	}
 }
 
-func classifyType(d *ast.GenDecl, enums map[string]bool) decl {
+func classifyType(d *ast.GenDecl, enums map[string]bool) member {
 	spec, ok := firstTypeSpec(d)
 	if !ok {
-		return decl{node: d, sect: sectionTypes, name: firstName(d)}
+		return member{node: d, sect: sectionTypes, name: firstName(d)}
 	}
 	name := spec.Name.Name
-	out := decl{node: d, name: name, exported: spec.Name.IsExported(), owner: name}
+	out := member{node: d, name: name, exported: spec.Name.IsExported(), owner: name}
 	switch {
-	case isInterface(spec):
+	case decl.IsInterface(spec):
 		out.sect = sectionInterfaces
 	case enums[name]:
 		// An enum's type declaration belongs with the constants that give it
@@ -116,8 +117,8 @@ func classifyType(d *ast.GenDecl, enums map[string]bool) decl {
 	return out
 }
 
-func classifyFunc(d *ast.FuncDecl, local map[string]bool) decl {
-	out := decl{
+func classifyFunc(d *ast.FuncDecl, local map[string]bool) member {
+	out := member{
 		node:     d,
 		name:     d.Name.Name,
 		exported: d.Name.IsExported(),
@@ -126,12 +127,12 @@ func classifyFunc(d *ast.FuncDecl, local map[string]bool) decl {
 	if d.Recv != nil {
 		out.sect = sectionTypes
 		out.isMethod = true
-		out.owner = receiverTypeName(d)
+		out.owner = decl.ReceiverTypeName(d)
 		return out
 	}
 	// A factory sits with the type it constructs rather than among the free
 	// functions, which is what keeps a type and its constructor adjacent.
-	if owner := factoryFor(d, local); owner != "" {
+	if owner := decl.FactoryFor(d, local); owner != "" {
 		out.sect = sectionTypes
 		out.owner = owner
 		return out
@@ -141,12 +142,12 @@ func classifyFunc(d *ast.FuncDecl, local map[string]bool) decl {
 }
 
 // classify assigns every top-level declaration in a file to a section.
-func classify(f *project.File) []decl {
-	enums := enumTypes(f.Syntax)
-	local := localTypes(f.Syntax)
+func classify(f *project.File) []member {
+	enums := decl.EnumTypes(f.Syntax)
+	local := decl.LocalTypes(f.Syntax)
 	sections := localTypeSections(f.Syntax, enums)
 
-	var out []decl
+	var out []member
 	for _, node := range f.Syntax.Decls {
 		switch d := node.(type) {
 		case *ast.GenDecl:
@@ -172,7 +173,7 @@ func localTypeSections(f *ast.File, enums map[string]bool) map[string]section {
 				continue
 			}
 			switch {
-			case isInterface(ts):
+			case decl.IsInterface(ts):
 				out[ts.Name.Name] = sectionInterfaces
 			case enums[ts.Name.Name]:
 				out[ts.Name.Name] = sectionEnums
@@ -182,96 +183,6 @@ func localTypeSections(f *ast.File, enums map[string]bool) map[string]section {
 		}
 	}
 	return out
-}
-
-// enumTypes returns the named types that have a const block declaring values of
-// that type in the same file.
-func enumTypes(f *ast.File) map[string]bool {
-	out := map[string]bool{}
-	for _, node := range f.Decls {
-		d, ok := node.(*ast.GenDecl)
-		if !ok || d.Tok != token.CONST {
-			continue
-		}
-		for _, spec := range d.Specs {
-			vs, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-			if id, ok := vs.Type.(*ast.Ident); ok {
-				out[id.Name] = true
-			}
-		}
-	}
-	return out
-}
-
-// localTypes returns the type names declared in a file.
-func localTypes(f *ast.File) map[string]bool {
-	out := map[string]bool{}
-	for _, node := range f.Decls {
-		d, ok := node.(*ast.GenDecl)
-		if !ok || d.Tok != token.TYPE {
-			continue
-		}
-		for _, spec := range d.Specs {
-			if ts, ok := spec.(*ast.TypeSpec); ok {
-				out[ts.Name.Name] = true
-			}
-		}
-	}
-	return out
-}
-
-// factoryFor returns the local type a function constructs, or "".
-//
-// A factory is a function whose first non-error result is a type declared in
-// the same file, which is the same classifier pat/factory-naming uses.
-func factoryFor(d *ast.FuncDecl, local map[string]bool) string {
-	if d.Type.Results == nil {
-		return ""
-	}
-	for _, field := range d.Type.Results.List {
-		name := baseTypeName(field.Type)
-		if name == "" || name == "error" {
-			continue
-		}
-		if local[name] {
-			return name
-		}
-		return ""
-	}
-	return ""
-}
-
-// baseTypeName unwraps a type expression down to its identifier, looking
-// through pointers and generic instantiation.
-func baseTypeName(expr ast.Expr) string {
-	switch t := expr.(type) {
-	case *ast.StarExpr:
-		return baseTypeName(t.X)
-	case *ast.Ident:
-		return t.Name
-	case *ast.IndexExpr:
-		return baseTypeName(t.X)
-	case *ast.IndexListExpr:
-		return baseTypeName(t.X)
-	default:
-		return ""
-	}
-}
-
-// receiverTypeName returns the type a method is declared on.
-func receiverTypeName(d *ast.FuncDecl) string {
-	if d.Recv == nil || len(d.Recv.List) != 1 {
-		return ""
-	}
-	return baseTypeName(d.Recv.List[0].Type)
-}
-
-func isInterface(spec *ast.TypeSpec) bool {
-	_, ok := spec.Type.(*ast.InterfaceType)
-	return ok
 }
 
 func firstTypeSpec(d *ast.GenDecl) (*ast.TypeSpec, bool) {
@@ -294,14 +205,4 @@ func firstName(d *ast.GenDecl) string {
 		}
 	}
 	return ""
-}
-
-// isSelector reports whether an expression is pkg.Name.
-func isSelector(expr ast.Expr, pkg, name string) bool {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok || sel.Sel.Name != name {
-		return false
-	}
-	id, ok := sel.X.(*ast.Ident)
-	return ok && id.Name == pkg
 }

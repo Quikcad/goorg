@@ -7,8 +7,10 @@ types chosen to model values, and the complexity of control flow.
 Where [`dir/`](directory-organization.md) constrains where code lives, `logic/`
 constrains what it looks like once you open the file.
 
-> **Status: specification only.** Nothing here is implemented. Rule IDs, config
-> keys, and defaults are proposals.
+> **Status: 6 of 9 specified rules implemented** — the four `logic/` syntax-tier
+> rules and both `pat/` rules. `logic/interface-registry`,
+> `logic/any-should-be-generic` and `logic/ideal-numeric-type` need type
+> information and land in phase 5.
 >
 > [Specified rules](#specified-rules) are agreed in principle and written up in
 > full. [Proposed rules](#proposed-rules) need an approve/deny decision each —
@@ -817,11 +819,11 @@ we want it in one tool rather than that it is unavailable.
    purely positional and could not get it wrong. goorg currently promises never
    to modify source; a `--fix` flag would be a deliberate reversal of that.
 
-7. **How does `pat/factory-naming` classify an imported result type?**
-   Deciding whether `func NewThing() Thing` returns a value or an interface
-   requires knowing what `Thing` is. When it is declared in the same package
-   that is a syntactic lookup; when it is imported it is not. Options: skip
-   imported result types entirely (safe, leaves a gap), assume non-pointer
-   imported types are values (wrong for interfaces such as `error`), or promote
-   the rule to the type tier (correct, but drags a syntax-tier rule across the
-   line drawn in [the type-information problem](#the-type-information-problem)).
+7. ~~**How does `pat/factory-naming` classify an imported result type?**~~
+   **Resolved: skipped.** A result type declared in another package is not
+   classified at all. An imported interface is syntactically indistinguishable
+   from an imported struct, and guessing "non-pointer means value" would misname
+   every constructor returning an error-like interface. Skipping leaves a real
+   gap — `func NewThing() otherpkg.Thing` is never judged — but a gap is
+   recoverable and a wrong rename is not. Promoting the rule to the type tier
+   would close it; that is a phase 5 option, not a phase 4 one.

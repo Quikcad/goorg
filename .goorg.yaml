@@ -25,6 +25,16 @@ rules:
   org/singleton-layout: error
   org/type-cohesion: error
 
+  # logic organization — how code is shaped
+  logic/iota-candidate: error
+  logic/max-condition-operands: error
+  logic/max-object-members: error
+  logic/prefer-guard-clause: error
+
+  # pattern correctness — naming and declaration layout
+  pat/expand-struct-definition: error
+  pat/factory-naming: error
+
 settings:
   dir/domain-layout:
     # Domains in both roots, so goorg dogfoods its own strictest layout rule
@@ -57,6 +67,19 @@ settings:
   org/max-private-functions:
     limit: 5
     when_file_has_exports: true
+
+  logic/max-object-members:
+    fields: 12
+    methods: 15
+
+  logic/max-condition-operands:
+    max: 4
+    require_parens_on_mixed: true
+
+  pat/factory-naming:
+    # `all-factories` would flag Parse, Open, Dial and MustCompile — all
+    # correct Go. See docs/logic-organization.md.
+    scope: prefixed
 
 exclude:
   # "**/testdata/**" is excluded automatically and is not repeated here.

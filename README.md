@@ -13,8 +13,8 @@ goorg checks the layer above syntax:
 | --- | --- | --- | --- |
 | **Directory organization** | `dir/` | Where code lives — tree shape, domains, package depth | **6 rules, shipped** |
 | **File organization** | `org/` | How code is split across files — ordering, budgets, globals | **10 rules, shipped** |
-| **Logic organization** | `logic/` | How code is shaped — type size, interfaces, complexity | specified |
-| **Pattern correctness** | `pat/` | Naming conventions and declaration layout | specified |
+| **Logic organization** | `logic/` | How code is shaped — type size, conditions, control flow | **4 rules, shipped** |
+| **Pattern correctness** | `pat/` | Naming conventions and declaration layout | **2 rules, shipped** |
 
 The standard itself lives in [`docs/`](docs/); decisions that bind the
 implementation are recorded in [`docs/decisions.md`](docs/decisions.md).
@@ -217,11 +217,29 @@ these.
 | `org/max-public-functions` | error | At most N exported functions per file |
 | `org/max-private-functions` | error | Few unexported helpers beside an exported API |
 
-### `logic/`, `pat/` — specified, not yet implemented
+### `logic/` — logic organization — **implemented**
 
-11 further rules are fully specified in [`docs/`](docs/) and scheduled in
-[TODO.md](TODO.md). `goorg rules` always lists what the binary you have actually
-runs.
+| Rule | Default | Enforces |
+| --- | --- | --- |
+| `logic/iota-candidate` | error | A run of consecutive integer constants uses `iota` |
+| `logic/max-condition-operands` | error | At most N operands per condition; `&&`/`||` mixed only with parentheses |
+| `logic/max-object-members` | error | At most N fields and N methods per type |
+| `logic/prefer-guard-clause` | error | A wholly wrapped body inverts into a guard clause |
+
+### `pat/` — pattern correctness — **implemented**
+
+| Rule | Default | Enforces |
+| --- | --- | --- |
+| `pat/expand-struct-definition` | error | A struct with fields spans multiple lines, one field each |
+| `pat/factory-naming` | error | `Make` returns a value, `New` returns a pointer |
+
+### Specified, not yet implemented
+
+Five type-tier rules — `logic/interface-registry`,
+`logic/any-should-be-generic`, `logic/ideal-numeric-type`,
+`org/consumer-locality` and `org/global-file-scoped` — are fully specified in
+[`docs/`](docs/) and land in phase 5. `goorg rules` always lists what the binary
+you have actually runs.
 
 ### Tiers
 

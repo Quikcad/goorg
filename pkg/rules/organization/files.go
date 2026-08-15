@@ -13,7 +13,7 @@ import (
 // rules classify once rather than once each.
 type fileDecls struct {
 	file  *project.File
-	decls []decl
+	decls []member
 }
 
 // orderedFiles returns the files the ordering and budget rules apply to.

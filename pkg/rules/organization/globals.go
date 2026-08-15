@@ -8,6 +8,7 @@ import (
 
 	"github.com/Quikcad/goorg/pkg/lint/diag"
 	"github.com/Quikcad/goorg/pkg/lint/rule"
+	"github.com/Quikcad/goorg/pkg/source/decl"
 	"github.com/Quikcad/goorg/pkg/source/project"
 )
 
@@ -160,7 +161,7 @@ func classifyGlobal(gen *ast.GenDecl, vs *ast.ValueSpec) string {
 	if allBlank(vs.Names) {
 		return exemptInterfaceAsserts
 	}
-	if hasEmbedDirective(gen) || (vs.Type != nil && isSelector(vs.Type, "embed", "FS")) {
+	if hasEmbedDirective(gen) || (vs.Type != nil && decl.IsSelector(vs.Type, "embed", "FS")) {
 		return exemptEmbeddedFilesystem
 	}
 	if vs.Type != nil {
@@ -258,7 +259,7 @@ func isCall(expr ast.Expr, pkg, name string) bool {
 	if !ok {
 		return false
 	}
-	return isSelector(call.Fun, pkg, name)
+	return decl.IsSelector(call.Fun, pkg, name)
 }
 
 func hasEmbedDirective(gen *ast.GenDecl) bool {
