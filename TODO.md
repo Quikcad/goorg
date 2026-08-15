@@ -81,48 +81,53 @@ and written under conventions predating most of the ecosystem. It is a proxy for
 
 ---
 
-## Phase 1 — Engine, syntax tier
+## Phase 1 — Engine, syntax tier — **complete**
 
-**Goal:** rebuild the engine deleted earlier, shaped for what the three
-documents now require rather than for the original nine-rule sketch.
+**Goal:** the engine, shaped for what the specifications require.
 
-**Blocked by:** nothing. Phase 0 is closed; the layout is
-[D2](docs/decisions.md#d2--goorg-adopts-domains-in-both-pkg-and-cmd).
-
-- [ ] `pkg/lint/diag` — `Diagnostic`, `Position`, `Severity`, deterministic
-      sort, counts
-- [ ] `pkg/source/project` — tree walk, parse, `Project`/`Package`/`File`/`Dir`
-      model, parse errors surfaced as findings rather than aborting the run
-- [ ] `pkg/lint/rule` — registry, `Rule` struct **carrying a `Tier` field from
-      day one** per [D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in),
-      even though only `syntax` exists until Phase 5
-- [ ] `pkg/lint/runner` — severity resolution, `RuleID`/`Severity` stamping,
-      rules stay ignorant of configuration
-- [ ] `pkg/lint/config` — `.goorg.yaml`, glob severity with specificity
-      precedence, per-rule settings as opaque closures, exclude globs. Unknown
-      keys, unknown rule IDs and unknown severities are hard errors.
-- [ ] `pkg/lint/report` — `text`, `github`, `json`; `auto` resolves to `github`
+- [x] `pkg/lint/diag` — `Diagnostic`, `Position`, `Severity`, `Counts`,
+      deterministic sort
+- [x] `pkg/source/project` — tree walk, parse, `Project`/`Package`/`File`/`Dir`
+      model; parse errors surface as `goorg/parse-error` findings rather than
+      aborting the run
+- [x] `pkg/lint/rule` — `Rule` with a `Tier` field per
+      [D1](docs/decisions.md#d1--two-tiers-type-checking-is-opt-in), `Category`,
+      `Context`, and `Set`
+- [x] `pkg/lint/runner` — severity resolution, `RuleID`/`Severity` stamping,
+      tier gating, suppression application
+- [x] `pkg/lint/config` — `.goorg.yaml`, glob severity with specificity
+      precedence, per-rule settings as opaque closures, exclude globs; unknown
+      keys, rule IDs and severities are hard errors
+- [x] `pkg/lint/report` — `text`, `github`, `json`; `auto` resolves to `github`
       under `GITHUB_ACTIONS`
-- [ ] `internal/cli` — `check`, `rules`, `explain`, `init`, `version`; flags
-      accepted in any position; exit codes **0 clean / 1 findings /
-      2 could-not-run**
-- [ ] `cmd/lint/goorg` — thin main, wires os streams into the CLI
-- [ ] Suppression per [D4](docs/decisions.md#d4--inline-suppression-requires-a-reason):
-      `//goorg:ignore <rule-id> — <reason>`, missing reason reported as
-      `goorg/invalid-suppression`, plus a stale-suppression check
-- [ ] Reserve the `goorg/` namespace for meta-diagnostics
-      (`goorg/parse-error`, `goorg/invalid-suppression`); it is not a
-      configurable family
-- [ ] Rule test harness — in-memory file map → temp tree → findings, plus the
-      registry well-formedness and determinism meta-tests
-- [ ] **gofmt conformance harness** — for every rule fixture, run `gofmt` over it
-      and assert the finding set is unchanged. This is what makes "complements
-      gofmt" enforceable instead of aspirational, and it must exist before the
-      first rule lands, not after.
-- [ ] CI: restore `task dogfood`; wire the gofmt conformance harness into `task`
+- [x] `internal/cli` — `check`, `rules`, `explain`, `init`, `version`; flags
+      accepted in any position; exit codes 0 / 1 / 2
+- [x] `cmd/lint/goorg` — thin main
+- [x] Suppression per [D4](docs/decisions.md#d4--inline-suppression-requires-a-reason),
+      with reasonless directives reported as `goorg/invalid-suppression` and
+      unused ones as `goorg/stale-suppression`
+- [x] `goorg/` reserved for meta-diagnostics and not suppressible — a broken
+      directive cannot hide the report of its own brokenness
+- [x] `pkg/lint/ruletest` — fixture harness plus `AssertWellFormed`,
+      `AssertDeterministic` and `AssertGofmtStable`
+- [x] **gofmt conformance harness**, with a negative test proving it rejects a
+      rule that reports on whitespace gofmt rewrites
+- [x] CI: `task` runs fmt, vet, test, dogfood and passes
 
-**Exit criteria:** `task` passes; `goorg check ./...` runs and reports nothing,
-because no rules are registered yet.
+**No global registry.** Rule families export `Rules()` and `internal/cli`
+composes them explicitly in `buildRuleSet`. goorg therefore has no package-level
+mutable state — the same constraint `org/globals-singleton-only` imposes on
+everyone else, met before the rule exists to enforce it.
+
+**Exit criteria met:** `task` passes; `goorg check ./...` runs clean and reports
+nothing, because no families are registered yet.
+
+### Deferred out of Phase 1
+
+- [ ] Suppression currently keys on the widest AST node starting on the line
+      below the directive. That covers declarations and statements correctly,
+      but a directive above a `case` clause or inside a composite literal is
+      untested. Revisit once real rules produce findings in those positions.
 
 ---
 
@@ -131,9 +136,11 @@ because no rules are registered yet.
 **Goal:** all 6 directory rules. Cheapest family, entirely syntactic, and the
 one that constrains this repository's own shape.
 
-**Blocked by:** Phase 1.
+**Blocked by:** nothing. Phase 1 is complete.
 
-- [ ] `dir/max-entries`
+- [ ] Add `pkg/rules/directory` and wire `directory.Rules()` into
+      `buildRuleSet` in `internal/cli/ruleset.go`
+- [ ] `dir/max-entries` — `project.Dir.Entries` is already populated
 - [ ] `dir/top-level-layout`
 - [ ] `dir/domain-layout` — the `domains` / `packages` / `any` mode, per root
 - [ ] `dir/max-package-depth` — **counts package directories only**; asset

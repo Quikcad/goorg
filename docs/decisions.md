@@ -14,7 +14,7 @@ This is the output of [Phase 0](../TODO.md#phase-0--decisions).
 | [D4](#d4--inline-suppression-requires-a-reason) | Inline suppression requires a reason | accepted |
 | [D5](#d5--budget-defaults-calibrated-against-a-measured-corpus) | Budget defaults calibrated against a measured corpus | accepted |
 | [D6](#d6--test-files-are-checked-by-structure-rules-exempt-from-budgets) | Test files are checked by structure rules, exempt from budgets | accepted, revisit |
-| [D7](#d7--recommendations-on-the-50-proposals) | Recommendations on the 50 proposals | **awaiting sign-off** |
+| [D7](#d7--recommendations-on-the-50-proposals) | Disposition of the 50 proposals | accepted |
 
 ---
 
@@ -229,12 +229,13 @@ limits rather than absent ones.
 
 ---
 
-## D7 — Recommendations on the 50 proposals
+## D7 — Disposition of the 50 proposals
 
-**Status: awaiting sign-off.** These are recommendations, not decisions. They
-affect Phase 6 only and block nothing.
+**Accepted.** 10 denied, 28 approved, 12 deferred. Affects Phase 6 only.
 
-### Deny — already covered by an existing linter (9)
+The specified rule count rises from 27 to **55**: 39 syntax-tier, 16 type-tier.
+
+### Denied — already covered by an existing linter (9)
 
 Reimplementing these buys one tool and one config; not reimplementing keeps
 goorg focused on what nothing else checks. Recommend denying all nine and
@@ -246,14 +247,14 @@ deliberate and recorded.
 43 `naked-return` · 46 `unwrapped-error` · 47 `error-equality` ·
 49 `error-string-style`
 
-### Deny — redundant with an already-specified rule (1)
+### Denied — redundant with an already-specified rule (1)
 
 10 `mutable-global` is subsumed by
 [`org/globals-singleton-only`](file-organization.md#orgglobals-singleton-only),
 which is stricter and already specified. Two rules reporting the same defect
 means two findings per violation and two places to configure it.
 
-### Approve — syntax tier, low false-positive rate (17)
+### Approved — syntax tier, low false-positive rate (17)
 
 Cheap, mechanical, and decidable from the AST. These are the ones worth building.
 
@@ -264,7 +265,7 @@ Cheap, mechanical, and decidable from the AST. These are the ones worth building
 39 `empty-branch` · 40 `max-function-lines` · 41 `max-function-params` ·
 42 `max-return-values` · 45 `boolean-parameter`
 
-### Approve — type tier (11)
+### Approved — type tier (11)
 
 Real defects, but gated on [D1](#d1--two-tiers-type-checking-is-opt-in) and
 Phase 5. Four of them — 27, 28, 29, 30 — are correctness bugs rather than style,
@@ -275,7 +276,7 @@ and are the strongest argument for taking on the type tier at all.
 27 `float-equality` · 28 `lossy-conversion` · 29 `unsigned-underflow` ·
 30 `integer-division-to-float` · 48 `panic-outside-main` · 50 `context-in-struct`
 
-### Defer — too noisy or too judgement-heavy to ship (12)
+### Deferred — too noisy or too judgement-heavy to ship (12)
 
 Not rejected on merit; rejected on false-positive cost. Each would need a
 detection strategy sharper than currently sketched before it earns a place.
@@ -286,7 +287,24 @@ detection strategy sharper than currently sketched before it earns a place.
 16 `interface-name-suffix` · 20 `single-instantiation-generic` ·
 21 `reflection-over-generics` · 25 `magic-number` · 44 `loop-invariant-computation`
 
-**Totals:** 10 deny, 28 approve (17 syntax + 11 types), 12 defer.
+**Totals:** 10 denied, 28 approved (17 syntax + 11 types), 12 deferred.
 
-If accepted, the specified rule count rises from 27 to 55, of which 39 are
-syntax-tier and 16 type-tier.
+### Unreconciled: D7 versus the ticked list
+
+The checkbox list in [`logic-organization.md`](logic-organization.md#proposed-rules)
+was ticked independently and **approves 35 rules, not 28**. The two disagree on
+19 of the 50. D7 is accepted as the recommendation of record, but the ticked
+list is a real signal and has not been overwritten.
+
+| Delta | Rules | Note |
+| --- | --- | --- |
+| Ticked, D7 denied | 23, 33, 34, 43, 46, 47, 49 | All seven are the `golangci-lint` overlap. Ticking them means goorg reimplements `exhaustive`, `gocognit`, `revive`, `nakedret`, `errorlint` ×2 and `staticcheck ST1005`. |
+| Ticked, D7 deferred | 3, 4, 8, 14, 20, 44 | Accepted on merit, deferred on false-positive cost. Ticking them means building them anyway, and each needs a sharper detection strategy first. |
+| Unticked, D7 approved | 11, 22, 24, 28, 29, 45 | Includes 28 `lossy-conversion` and 29 `unsigned-underflow`, which are correctness bugs rather than style. |
+
+**Blocks Phase 6 only.** Reconcile before that phase starts; nothing earlier
+depends on it.
+
+Deferred rules are not rejected on merit — each needs a sharper detection
+strategy than currently sketched before it earns a place. They stay in
+[`logic-organization.md`](logic-organization.md) as proposals.

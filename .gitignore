@@ -21,6 +21,9 @@ go.work.sum
 # Dependency directory (we use modules, not vendoring)
 /vendor/
 
+# go-task's local checksum cache
+.task/
+
 # Editors & tooling
 .idea/
 .vscode/

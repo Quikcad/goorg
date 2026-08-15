@@ -47,7 +47,7 @@ tasks:
     cmds:
       - go test -coverprofile=coverage.txt -covermode=atomic ./...
       - go tool cover -html=coverage.txt -o coverage.html
-      - echo "coverage report: coverage.html"
+      - 'echo "coverage report -> coverage.html"'
 
   fmt:
     desc: Format all Go source
@@ -94,9 +94,9 @@ tasks:
       - ./bin/{{.BINARY}} rules
 
   calibrate:
-    desc: Measure budget distributions over a corpus (default: the Go standard library)
+    desc: "Measure budget distributions over a corpus; defaults to the Go standard library"
     cmds:
-      - go run ./cmd/calibration/measure {{.CLI_ARGS | default (printf "%s/src" (env "GOROOT"))}}
+      - go run ./cmd/calibration/measure {{if .CLI_ARGS}}{{.CLI_ARGS}}{{else}}$(go env GOROOT)/src{{end}}
 
   clean:
     desc: Remove build and coverage artifacts
