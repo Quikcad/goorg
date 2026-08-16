@@ -11,10 +11,10 @@ goorg checks the layer above syntax:
 
 | Category | Rule prefix | What it enforces | Status |
 | --- | --- | --- | --- |
-| **Directory organization** | `dir/` | Where code lives — tree shape, domains, package depth | **6 rules, shipped** |
-| **File organization** | `org/` | How code is split across files — ordering, budgets, globals | **10 rules, shipped** |
-| **Logic organization** | `logic/` | How code is shaped — type size, conditions, control flow | **4 rules, shipped** |
-| **Pattern correctness** | `pat/` | Naming conventions and declaration layout | **2 rules, shipped** |
+| **Directory organization** | `dir/` | Where code lives — tree shape, domains, package depth | **6 rules** |
+| **File organization** | `org/` | How code is split across files — ordering, budgets, globals | **13 rules** |
+| **Logic organization** | `logic/` | How code is shaped — type size, conditions, control flow | **35 rules** |
+| **Pattern correctness** | `pat/` | Naming conventions and declaration layout | **2 rules** |
 
 The standard itself lives in [`docs/`](docs/); decisions that bind the
 implementation are recorded in [`docs/decisions.md`](docs/decisions.md).
@@ -191,70 +191,102 @@ because the disabled rule looks like a passing one.
 Run `goorg explain <rule>` for the rationale, examples, and options for any of
 these.
 
-### `dir/` — directory organization — **implemented**
+### `dir/` — directory organization — 6 rules
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `dir/domain-layout` | error | Packages sit at `<root>/<domain>/<package>`; per-root `domains` / `packages` / `any` |
-| `dir/domain-has-no-go-files` | error | A domain directory holds no `.go` files at all |
-| `dir/embedded-assets` | error | Non-Go files live in a subdirectory, never beside Go source |
-| `dir/max-entries` | warning | A directory holds at most N entries, files and subdirectories together |
-| `dir/max-package-depth` | error | No subdomains and no subpackages |
-| `dir/top-level-layout` | error | Only `pkg/`, `cmd/`, `internal/` may contain Go packages |
+Where a package is allowed to live, and what a directory may hold.
 
-### `org/` — file organization — **implemented**
+| Rule | Default | Tier | Enforces |
+| --- | --- | --- | --- |
+| `dir/domain-has-no-go-files` | error | syntax | a domain directory contains no Go files whatsoever |
+| `dir/domain-layout` | error | syntax | packages sit at the nesting depth their root's mode requires |
+| `dir/embedded-assets` | error | syntax | non-Go files live in a subdirectory, never beside Go source |
+| `dir/max-entries` | warning | syntax | a directory holds at most a configured number of entries |
+| `dir/max-package-depth` | error | syntax | no subdomains and no subpackages |
+| `dir/top-level-layout` | error | syntax | only the configured roots may contain Go packages |
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `org/member-order` | error | Enums, vars, interfaces, types with their factories and methods, then functions |
-| `org/private-functions-last` | error | Unexported functions after every exported one |
-| `org/singleton-layout` | error | Singleton files: state, `instance`, then exported accessors |
-| `org/singleton-instance-func` | error | Construction guarded by `sync.Once`, never in `init` |
-| `org/globals-singleton-only` | error | Package-level vars only as singleton state |
-| `org/type-cohesion` | error | A type, its factory and its methods in one file |
-| `org/interface-own-file` | warning | An interface gets a file of its own |
-| `org/max-functions-per-file` | error | At most N functions per file |
-| `org/max-public-functions` | error | At most N exported functions per file |
-| `org/max-private-functions` | error | Few unexported helpers beside an exported API |
+### `org/` — file organization — 13 rules
 
-### `logic/` — logic organization — **implemented**
+Which file a declaration belongs in, and in what order files present them. 3 of them need the module to compile.
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `logic/iota-candidate` | error | A run of consecutive integer constants uses `iota` |
-| `logic/max-condition-operands` | error | At most N operands per condition; `&&`/`||` mixed only with parentheses |
-| `logic/max-object-members` | error | At most N fields and N methods per type |
-| `logic/prefer-guard-clause` | error | A wholly wrapped body inverts into a guard clause |
+| Rule | Default | Tier | Enforces |
+| --- | --- | --- | --- |
+| `org/consumer-locality` | warning | types | a declaration used from only one other file belongs in that file |
+| `org/global-file-scoped` | error | types | a package-level variable is referenced only in the file that declares it |
+| `org/globals-singleton-only` | error | syntax | package-level variables are permitted only as singleton state |
+| `org/interface-method-order` | warning | types | methods are declared in the order the interface declares them |
+| `org/interface-own-file` | warning | syntax | an interface declaration gets a file of its own |
+| `org/max-functions-per-file` | error | syntax | a file declares at most a configured number of functions |
+| `org/max-private-functions` | error | syntax | a file with exports declares few unexported functions |
+| `org/max-public-functions` | error | syntax | a file declares at most a configured number of exported functions |
+| `org/member-order` | error | syntax | declarations appear in the canonical file order |
+| `org/private-functions-last` | error | syntax | unexported functions come after every exported one |
+| `org/singleton-instance-func` | error | syntax | a singleton is built by an unexported instance function guarded by sync.Once |
+| `org/singleton-layout` | error | syntax | a singleton file is laid out as state, accessor, then exported functions |
+| `org/type-cohesion` | error | syntax | a type, its factory and its methods live in one file |
 
-### `pat/` — pattern correctness — **implemented**
+### `logic/` — logic organization — 35 rules
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `pat/expand-struct-definition` | error | A struct with fields spans multiple lines, one field each |
-| `pat/factory-naming` | error | `Make` returns a value, `New` returns a pointer |
+The shape of the code itself — type size, conditions, control flow, enums. 14 of them need the module to compile.
 
-One rule ships **off**: `logic/boolean-parameter` objects to a bare `bool` on an
-exported function, which is a real readability cost but a common and not-wrong
-shape. Enable it with `logic/boolean-parameter: warning` when the team wants the
-convention.
+| Rule | Default | Tier | Enforces |
+| --- | --- | --- | --- |
+| `logic/any-should-be-generic` | warning | types | any that only carries a value should be a type parameter |
+| `logic/boolean-field-count` | warning | syntax | a struct carries at most a configured number of bool fields |
+| `logic/boolean-parameter` | **off** | syntax | a bool parameter on an exported function is unreadable at the call site |
+| `logic/constraint-too-wide` | warning | types | a type parameter narrowed at runtime should be narrowed in its constraint |
+| `logic/context-in-struct` | error | types | a context.Context stored in a struct outlives its request |
+| `logic/duplicate-const-value` | error | syntax | two constants in one block share a value |
+| `logic/empty-branch` | warning | syntax | an empty branch needs a comment saying why |
+| `logic/empty-interface-field` | warning | syntax | a struct field typed any erases what it holds |
+| `logic/enum-missing-string` | warning | types | an enum type has no String method |
+| `logic/enum-zero-value-unnamed` | warning | syntax | an iota enum names its zero value |
+| `logic/exported-embedded-mutex` | error | types | an exported struct embedding a mutex leaks Lock into its API |
+| `logic/float-equality` | error | types | floating-point values are compared with == or != |
+| `logic/ideal-numeric-type` | warning | types | a numeric parameter should be the type its uses already speak |
+| `logic/identical-branches` | error | syntax | two branches of one conditional have identical bodies |
+| `logic/if-chain-to-switch` | warning | syntax | a long else-if chain on one operand should be a switch |
+| `logic/integer-division-to-float` | error | types | integer division converted to a float truncates first |
+| `logic/interface-at-consumer` | warning | types | an interface declared beside its only implementation belongs at the consumer |
+| `logic/interface-registry` | error | types | types are checked against a registry of interfaces |
+| `logic/interface-size` | warning | syntax | an interface declares at most a configured number of methods |
+| `logic/iota-candidate` | error | syntax | a run of consecutive integer constants should use iota |
+| `logic/lossy-conversion` | error | types | a narrowing numeric conversion has no range check |
+| `logic/max-condition-operands` | error | syntax | a condition combines at most a configured number of operands |
+| `logic/max-function-lines` | warning | syntax | a function body stays within a configured line count |
+| `logic/max-function-params` | warning | syntax | a function takes at most a configured number of parameters |
+| `logic/max-nesting-depth` | error | syntax | block nesting stays within a configured depth |
+| `logic/max-object-members` | error | syntax | a type declares at most a configured number of members |
+| `logic/max-return-values` | warning | syntax | a function returns at most a configured number of values |
+| `logic/negated-condition` | warning | syntax | an if/else on a negated condition should be flipped |
+| `logic/panic-outside-main` | error | types | a library may not panic |
+| `logic/pointer-to-slice-or-map` | warning | syntax | a pointer to a slice or map is almost always a mistake |
+| `logic/prefer-guard-clause` | error | syntax | a wholly wrapped body should invert into a guard clause |
+| `logic/single-case-switch` | warning | syntax | a switch with one case is an if, or a missing case |
+| `logic/stringly-typed-enum` | warning | syntax | a run of string constants used as an enum needs a named type |
+| `logic/unsigned-underflow` | warning | types | subtraction on an unsigned type can wrap to a huge value |
+| `logic/unused-type-parameter` | warning | types | a type parameter used once is not doing generic work |
 
-### Type tier — **implemented**
+### `pat/` — pattern correctness — 2 rules
 
-These five need the module to compile. `--syntax-only` skips them.
+Naming conventions and declaration layout.
 
-| Rule | Default | Enforces |
-| --- | --- | --- |
-| `logic/interface-registry` | error | Types are checked against a registry of interfaces, including near misses |
-| `logic/any-should-be-generic` | warning | `any` that only carries a value should be a type parameter |
-| `logic/ideal-numeric-type` | warning | A numeric parameter is the type its uses already speak |
-| `org/global-file-scoped` | error | A package variable is referenced only in its declaring file |
-| `org/consumer-locality` | warning | A declaration used from one other file belongs in it |
+| Rule | Default | Tier | Enforces |
+| --- | --- | --- | --- |
+| `pat/expand-struct-definition` | error | syntax | a struct with fields is written across multiple lines |
+| `pat/factory-naming` | error | syntax | Make returns a value, New returns a pointer |
+
+`logic/boolean-parameter` is the one rule that ships **off**: a bare `bool` on
+an exported function is a real readability cost but a common and not-wrong
+shape. Enable it with `logic/boolean-parameter: warning` when the team wants
+the convention.
 
 ### Tiers
 
-On goorg itself, with all 55 rules enabled, the syntax tier takes 34 ms and
-both tiers take 730 ms — against 475 ms for `go vet ./...`, the honest
-comparison since both type-check.
+On goorg itself, with all 56 rules enabled and a warm build cache, the syntax
+tier takes 34 ms and both tiers take 730 ms. `go vet ./...` on the same tree
+takes 80 ms — it reuses cached export data per package, which goorg does not,
+so the type tier is the part of a run you feel. That is what `--syntax-only`
+is for.
 
 Every rule declares a tier. **Syntax** rules use `go/parser` only, so they work
 on a tree that does not compile — which is exactly when someone is mid-refactor

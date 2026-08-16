@@ -132,11 +132,11 @@ Leave these for last — each is a design decision, not an edit:
 
 ## Step 5: use the fast tier while you work
 
-The type tier costs about thirty times the syntax tier, because it type-checks
+The type tier costs about twenty times the syntax tier, because it type-checks
 the module. While iterating:
 
 ```sh
-goorg check ./... --syntax-only    # 39 of 55 rules, milliseconds
+goorg check ./... --syntax-only    # 39 of 56 rules, milliseconds
 ```
 
 CI should run the full set. `--syntax-only` announces what it skipped rather

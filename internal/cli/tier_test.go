@@ -156,3 +156,133 @@ func TestWhatIfRejectsAMoveThatBreaksABudget(t *testing.T) {
 		}
 	})
 }
+
+// interfaceOrderProject declares one interface and three implementations: one
+// in the interface's order, one scrambled, and one that interleaves an
+// unrelated method among them.
+func interfaceOrderProject(settings string) map[string]string {
+	return map[string]string{
+		"go.mod": "module example.com/imo\n\ngo 1.25.0\n",
+		"pkg/a/b/b.go": `package b
+
+type Store interface {
+	Open() error
+	Read() ([]byte, error)
+	Close() error
+}
+
+type Good struct{}
+
+var _ Store = (*Good)(nil)
+
+func (g *Good) Open() error            { return nil }
+func (g *Good) Read() ([]byte, error)  { return nil, nil }
+func (g *Good) Close() error           { return nil }
+
+type Scrambled struct{}
+
+var _ Store = (*Scrambled)(nil)
+
+func (s *Scrambled) Close() error           { return nil }
+func (s *Scrambled) Open() error            { return nil }
+func (s *Scrambled) Read() ([]byte, error)  { return nil, nil }
+
+type Interleaved struct{}
+
+var _ Store = (*Interleaved)(nil)
+
+func (i *Interleaved) Open() error           { return nil }
+func (i *Interleaved) Flush() error          { return nil }
+func (i *Interleaved) Read() ([]byte, error) { return nil, nil }
+func (i *Interleaved) Close() error          { return nil }
+
+type Undeclared struct{}
+
+func (u *Undeclared) Close() error           { return nil }
+func (u *Undeclared) Open() error            { return nil }
+func (u *Undeclared) Read() ([]byte, error)  { return nil, nil }
+`,
+		".goorg.yaml": "version: 1\nrules:\n  \"*\": \"off\"\n  org/interface-method-order: error\n" + settings,
+	}
+}
+
+func TestInterfaceMethodOrder(t *testing.T) {
+	t.Run("scrambled order is reported, matching order is not", func(t *testing.T) {
+		root := fixture(t, interfaceOrderProject(""))
+		stdout, _, code := exec(t, nil, "check", "-root", root)
+		if code != ExitFindings {
+			t.Fatalf("exit = %d, want %d\n%s", code, ExitFindings, stdout)
+		}
+		if !strings.Contains(stdout, "Scrambled declares Store methods as Close, Open, Read") {
+			t.Errorf("the scrambled implementation was not reported:\n%s", stdout)
+		}
+		// The message names both orders, so the fix needs no second lookup.
+		if !strings.Contains(stdout, "the interface declares them Open, Read, Close") {
+			t.Errorf("the message does not say what the order should be:\n%s", stdout)
+		}
+		if strings.Contains(stdout, "Good declares") {
+			t.Errorf("an implementation in the right order was reported:\n%s", stdout)
+		}
+	})
+
+	// A method the interface does not mention may sit anywhere; only the
+	// relative order of the interface's own methods is constrained.
+	t.Run("interleaving is allowed by default", func(t *testing.T) {
+		root := fixture(t, interfaceOrderProject(""))
+		stdout, _, _ := exec(t, nil, "check", "-root", root)
+		if strings.Contains(stdout, "Interleaved") {
+			t.Errorf("interleaving was reported without contiguous set:\n%s", stdout)
+		}
+	})
+
+	t.Run("contiguous also requires them together", func(t *testing.T) {
+		root := fixture(t, interfaceOrderProject("settings:\n  org/interface-method-order:\n    contiguous: true\n"))
+		stdout, _, _ := exec(t, nil, "check", "-root", root)
+		if !strings.Contains(stdout, "Interleaved interleaves other methods") {
+			t.Errorf("contiguous did not report the interleaved implementation:\n%s", stdout)
+		}
+	})
+
+	// Structural satisfaction is often accidental, so a type that never said it
+	// implements the interface owes it no ordering.
+	t.Run("undeclared implementations are ignored by default", func(t *testing.T) {
+		root := fixture(t, interfaceOrderProject(""))
+		stdout, _, _ := exec(t, nil, "check", "-root", root)
+		if strings.Contains(stdout, "Undeclared") {
+			t.Errorf("a type with no assertion was reported:\n%s", stdout)
+		}
+	})
+
+	t.Run("include_implicit reaches them", func(t *testing.T) {
+		root := fixture(t, interfaceOrderProject("settings:\n  org/interface-method-order:\n    include_implicit: true\n"))
+		stdout, _, _ := exec(t, nil, "check", "-root", root)
+		if !strings.Contains(stdout, "Undeclared declares Store methods") {
+			t.Errorf("include_implicit did not reach an undeclared implementation:\n%s", stdout)
+		}
+	})
+
+	// One method imposes no order, so a single-method interface must never fire.
+	t.Run("a one-method interface constrains nothing", func(t *testing.T) {
+		root := fixture(t, map[string]string{
+			"go.mod": "module example.com/one\n\ngo 1.25.0\n",
+			"pkg/a/b/b.go": `package b
+
+type Closer interface {
+	Close() error
+}
+
+type T struct{}
+
+var _ Closer = (*T)(nil)
+
+func (t *T) Other() error { return nil }
+func (t *T) Close() error { return nil }
+`,
+			".goorg.yaml": "version: 1\nrules:\n  \"*\": \"off\"\n  org/interface-method-order: error\n",
+		})
+		_, _, code := exec(t, nil, "check", "-root", root)
+		if code != ExitOK {
+			t.Errorf("a single-method interface produced a finding")
+		}
+	})
+}
