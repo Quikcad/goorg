@@ -9,9 +9,10 @@ Where [`dir/`](directory-organization.md) constrains where a package lives and
 [`logic/`](logic-organization.md) constrains what a declaration looks like,
 `org/` constrains the file it lands in.
 
-> **Status: all 12 rules implemented.** org/consumer-locality ships in its
-> narrow form; see [the what-if problem](#the-what-if-problem). Both type-tier
-> rules need the module to compile. See [Open questions](#open-questions).
+> **Status: all 13 rules implemented.** org/consumer-locality ships in its
+> narrow form; see [the what-if problem](#the-what-if-problem). The three
+> type-tier rules need the module to compile. See
+> [Open questions](#open-questions).
 
 ---
 
@@ -322,6 +323,98 @@ a named type together with a `sync.Once`. From there, check the position of the
   [`org/singleton-instance-func`](#orgsingleton-instance-func) and
   [`org/global-file-scoped`](#orgglobal-file-scoped); the three describe one
   pattern from three angles.
+
+### `org/interface-method-order`
+
+**A type that is declared to implement an interface declares those methods in
+the order the interface declares them.**
+
+```go
+type Store interface {
+	Open() error
+	Read() ([]byte, error)
+	Close() error
+}
+
+var _ Store = (*File)(nil)
+
+func (f *File) Open() error           { ... }   // OK — the interface's order
+func (f *File) Read() ([]byte, error) { ... }
+func (f *File) Close() error          { ... }
+
+func (f *File) Close() error          { ... }   // violation — Close before Open
+func (f *File) Open() error           { ... }
+func (f *File) Read() ([]byte, error) { ... }
+```
+
+An interface is a contract read as a list, and every implementation is that
+list written out longhand. Methods the interface does not mention may sit
+anywhere among them; only the relative order of the interface's own methods is
+constrained.
+
+#### Configuration
+
+```yaml
+settings:
+  org/interface-method-order:
+    # An interface with one method imposes no order. Values below 2 are
+    # raised to 2.
+    min_methods: 2
+    # Also check interfaces a type satisfies without saying so.
+    include_implicit: false
+    # Additionally require the interface's methods to be an uninterrupted run,
+    # with the type's other methods before or after.
+    contiguous: false
+```
+
+#### Rationale
+
+Whoever compares an implementation against its contract — or two
+implementations of the same contract against each other — does it method by
+method. In a matching order that is a scan down two columns. In a scrambled one
+it is a search, repeated once per method, and paid by the reader least familiar
+with the code.
+
+The order also carries meaning the names do not. An interface usually lists its
+methods in the sequence a caller uses them: open, read, close. An implementation
+that scrambles that discards the one piece of documentation the interface
+supplied for free.
+
+#### Detection
+
+Type tier, but the order itself is read from **syntax**. `types.Interface`
+sorts its methods by identifier, so the type checker cannot answer what order an
+interface was written in — the AST has to. Only interfaces declared inside the
+module are checked, since a dependency's source is not loaded.
+
+By default the rule acts on interfaces a type is *declared* to implement, via
+the compile-time assertion
+[`logic/interface-registry`](logic-organization.md#logicinterface-registry)
+already asks for:
+
+```go
+var _ Store = (*File)(nil)
+```
+
+Structural satisfaction alone is often accidental, which is why
+`include_implicit` is off: a type that happens to fit an unrelated interface
+owes it no ordering. The two rules share one scan for what counts as an
+assertion, in `pkg/source/typed`, so that adding the assertion the first demands
+always enables the second.
+
+A type that implements the interface only partially is skipped — the compiler
+or `logic/interface-registry` has the better complaint. A type asserted against
+two interfaces whose orders disagree will be reported for one of them; that is
+a real conflict between the two contracts rather than a false positive.
+
+#### Interactions
+
+- Orders methods *within* the methods section that
+  [`org/member-order`](#orgmember-order) places. The two never disagree:
+  member-order settles the section, this settles the sequence inside it.
+- Excluded from the what-if pass. Its fix is a reorder within one file, which
+  is always available and never trades one violation for another — see
+  [the what-if problem](#the-what-if-problem).
 
 ---
 
@@ -813,6 +906,7 @@ Resolution order, highest first:
 | 3 | `org/interface-own-file` | Placement of a type declaration. |
 | 4 | file budgets | A move that breaks a budget is not an improvement. |
 | 5 | `org/member-order`, `org/private-functions-last` | Ordering within whatever file the above settled on. |
+| 5 | `org/interface-method-order` | Ordering within the methods section `member-order` settled. |
 | 6 | `org/consumer-locality` | Yields to everything. This is the exception you asked for, stated as a rank. |
 
 Two conflicts are worth calling out because they are guaranteed to occur, not

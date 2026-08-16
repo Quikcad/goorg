@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"sort"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -51,6 +52,29 @@ func (p *Package) FileOf(pos token.Pos) string {
 		return filepath.ToSlash(name)
 	}
 	return filepath.ToSlash(rel)
+}
+
+// sortedSyntax returns the package's files in a stable order.
+func (p *Package) sortedSyntax() []*ast.File {
+	type entry struct {
+		path string
+		file *ast.File
+	}
+	entries := make([]entry, 0, len(p.Syntax))
+	for i, file := range p.Syntax {
+		path := ""
+		if i < len(p.Files) {
+			path = p.Files[i]
+		}
+		entries = append(entries, entry{path: path, file: file})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].path < entries[j].path })
+
+	out := make([]*ast.File, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, e.file)
+	}
+	return out
 }
 
 // newPackage converts a go/packages result, or returns nil for one with no

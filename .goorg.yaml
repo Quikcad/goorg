@@ -41,6 +41,7 @@ rules:
   logic/interface-registry: error
   org/consumer-locality: warning
   org/global-file-scoped: error
+  org/interface-method-order: warning
   # rules approved in D7
   logic/boolean-field-count: warning
   # Opt-in; see docs/decisions.md D7.

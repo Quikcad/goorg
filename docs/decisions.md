@@ -47,15 +47,20 @@ Roughly half the 50 proposals are the same.
 
 | Run | Time |
 | --- | --- |
-| `--syntax-only` (22 rules) | **20 ms** |
-| both tiers (27 rules) | **650 ms** |
-| `go vet ./...`, for scale | 475 ms |
+| `--syntax-only` (39 rules) | **34 ms** |
+| both tiers (56 rules) | **730 ms** |
+| `go vet ./...`, for scale | 80 ms |
 
-The type tier costs about 30× the syntax tier and lands in the same range as
-`go vet` — which is the honest comparison, since both type-check the module.
-That is the price of the five rules, and it is why the tier is only loaded when
-a type-tier rule is actually enabled: a project that switches them off pays
-nothing.
+The type tier costs about 20× the syntax tier. That is the price of type
+information, and it is why the tier is only loaded when a type-tier rule is
+actually enabled: a project that switches them off pays nothing.
+
+The `go vet` figure is a correction. It was recorded here as 475 ms when this
+decision was written, against a build cache that was warm for goorg but not for
+vet's own cached per-package results; re-measured properly it is 80 ms, and the
+type tier is roughly 9× vet rather than comparable to it. The decision does not
+turn on that number — the syntax/type gap is what forces the split — but the
+"same range as `go vet`" claim it once carried was wrong.
 
 → [The type-information problem](logic-organization.md#the-type-information-problem)
 
@@ -284,6 +289,7 @@ limits rather than absent ones.
 **Accepted.** 10 denied, 28 approved, 12 deferred. Affects Phase 6 only.
 
 The specified rule count rises from 27 to **55**: 39 syntax-tier, 16 type-tier.
+(`org/interface-method-order`, added after D7, brings the shipped total to 56.)
 
 ### Denied — already covered by an existing linter (9)
 

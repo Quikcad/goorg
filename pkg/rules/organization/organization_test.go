@@ -487,8 +487,8 @@ func TestNoDefectIsReportedTwice(t *testing.T) {
 
 func TestFamilyIsWellFormed(t *testing.T) {
 	rules := Rules()
-	if len(rules) != 12 {
-		t.Fatalf("family has %d rules, want 12", len(rules))
+	if len(rules) != 13 {
+		t.Fatalf("family has %d rules, want 13", len(rules))
 	}
 	for _, r := range rules {
 		t.Run(r.ID, func(t *testing.T) {
