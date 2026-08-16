@@ -149,6 +149,7 @@ func (p *Project) visitDir(rel, path, name string, opts Options) error {
 	if opts.Exclude != nil && opts.Exclude(rel) {
 		return filepath.SkipDir
 	}
+
 	entries, nonGo := scanDir(path, rel, opts)
 	p.Dirs = append(p.Dirs, &Dir{
 		Rel:        rel,

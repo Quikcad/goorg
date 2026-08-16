@@ -13,7 +13,7 @@ goorg checks the layer above syntax:
 | --- | --- | --- | --- |
 | **Directory organization** | `dir/` | Where code lives — tree shape, domains, package depth | **6 rules** |
 | **File organization** | `org/` | How code is split across files — ordering, budgets, globals | **13 rules** |
-| **Logic organization** | `logic/` | How code is shaped — type size, conditions, control flow | **35 rules** |
+| **Logic organization** | `logic/` | How code is shaped — type size, conditions, control flow | **36 rules** |
 | **Pattern correctness** | `pat/` | Naming conventions and declaration layout | **2 rules** |
 
 The standard itself lives in [`docs/`](docs/); decisions that bind the
@@ -261,6 +261,7 @@ The shape of the code itself — type size, conditions, control flow, enums. 14 
 | `logic/panic-outside-main` | error | types | a library may not panic |
 | `logic/pointer-to-slice-or-map` | warning | syntax | a pointer to a slice or map is almost always a mistake |
 | `logic/prefer-guard-clause` | error | syntax | a wholly wrapped body should invert into a guard clause |
+| `logic/section-spacing` | warning | syntax | a function's guard prologue and its result are set off by a blank line |
 | `logic/single-case-switch` | warning | syntax | a switch with one case is an if, or a missing case |
 | `logic/stringly-typed-enum` | warning | syntax | a run of string constants used as an enum needs a named type |
 | `logic/unsigned-underflow` | warning | types | subtraction on an unsigned type can wrap to a huge value |
@@ -282,7 +283,7 @@ the convention.
 
 ### Tiers
 
-On goorg itself, with all 56 rules enabled and a warm build cache, the syntax
+On goorg itself, with all 57 rules enabled and a warm build cache, the syntax
 tier takes 34 ms and both tiers take 730 ms. `go vet ./...` on the same tree
 takes 80 ms — it reuses cached export data per package, which goorg does not,
 so the type tier is the part of a run you feel. That is what `--syntax-only`

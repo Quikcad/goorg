@@ -273,10 +273,241 @@ func f(ok bool) int {
 	})
 }
 
+// guardsRunIntoBody is the shape the rule exists for: a validation prologue and
+// the work it protects, with nothing between them.
+const guardsRunIntoBody = `package b
+
+func f(a, b int) (int, error) {
+	if a < 0 {
+		return 0, errNegative
+	}
+	if b < 0 {
+		return 0, errNegative
+	}
+	sum := a + b
+	return sum, nil
+}
+`
+
+func TestSectionSpacing(t *testing.T) {
+	t.Run("guards run into the body", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod":       "module x\n",
+			"pkg/a/b/b.go": guardsRunIntoBody,
+		})
+		ruletest.Assert(t, got, []string{"the body follows 2 guard clauses with no blank line"})
+	})
+
+	t.Run("result runs into the body", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func g(a int) Point {
+	x := a * 2
+	y := a * 3
+	z := a * 4
+	return Point{
+		X: x,
+		Y: y,
+		Z: z,
+	}
+}
+`,
+		})
+		ruletest.Assert(t, got, []string{"the returned result follows the body with no blank line"})
+	})
+
+	// One missing blank line is one finding. Both checks want the boundary
+	// before the return here, and keying them on the statement index is what
+	// stops the rule reporting the same gap twice.
+	t.Run("guards meeting a multi-line result report once", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func h(a int) (Point, error) {
+	if a < 0 {
+		return Point{}, errNegative
+	}
+	if a > 100 {
+		return Point{}, errTooBig
+	}
+	if a == 7 {
+		return Point{}, errSeven
+	}
+	return Point{
+		X: a,
+		Y: a,
+	}, nil
+}
+`,
+		})
+		ruletest.Assert(t, got, []string{"the body follows 3 guard clauses with no blank line"})
+	})
+
+	t.Run("both sections set off", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func h(a, b int) (Point, error) {
+	if a < 0 {
+		return Point{}, errNegative
+	}
+	if b < 0 {
+		return Point{}, errNegative
+	}
+
+	x := a * 2
+	y := b * 3
+
+	return Point{
+		X: x,
+		Y: y,
+	}, nil
+}
+`,
+		})
+		ruletest.Assert(t, got, nil)
+	})
+
+	// A comment divides the sections at least as clearly as a blank line, and
+	// demanding both would be arguing with an author who has already said where
+	// the boundary is.
+	t.Run("a comment is a boundary", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func f(a, b int) (int, error) {
+	if a < 0 {
+		return 0, errNegative
+	}
+	if b < 0 {
+		return 0, errNegative
+	}
+	// Both are known non-negative from here.
+	sum := a + b
+	return sum, nil
+}
+`,
+		})
+		ruletest.Assert(t, got, nil)
+	})
+
+	t.Run("a single guard is not a prologue", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func f(a int) int {
+	if a < 0 {
+		return 0
+	}
+	x := a * 2
+	return x
+}
+`,
+		})
+		ruletest.Assert(t, got, nil)
+	})
+
+	// `return nil` closing a run of validations is the result, not a body, and
+	// reads fine attached to the last check.
+	t.Run("validations closing with a bare return", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func validate(a, b int) error {
+	if a < 0 {
+		return errNegative
+	}
+	if b < 0 {
+		return errNegative
+	}
+	return nil
+}
+`,
+		})
+		ruletest.Assert(t, got, nil)
+	})
+
+	// An if with an else is a branch, not an early exit, so the run stops.
+	t.Run("a branching if does not extend the prologue", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func f(a, b int) int {
+	if a < 0 {
+		return 0
+	}
+	if b < 0 {
+		b = -b
+	} else {
+		b = b * 2
+	}
+	x := a + b
+	return x
+}
+`,
+		})
+		ruletest.Assert(t, got, nil)
+	})
+
+	t.Run("a short result is not worth separating", func(t *testing.T) {
+		got := ruletest.Run(t, sectionSpacing, map[string]string{
+			"go.mod": "module x\n",
+			"pkg/a/b/b.go": `package b
+
+func g(a int) int {
+	x := a * 2
+	y := a * 3
+	z := a * 4
+	return x + y + z
+}
+`,
+		})
+		ruletest.Assert(t, got, nil)
+	})
+
+	t.Run("min_guards raises the threshold", func(t *testing.T) {
+		got := ruletest.RunWith(t, sectionSpacing, map[string]string{
+			"go.mod":       "module x\n",
+			"pkg/a/b/b.go": guardsRunIntoBody,
+		}, map[string]int{"min_guards": 3})
+		ruletest.Assert(t, got, nil)
+	})
+
+	t.Run("min_guards of 0 disables the prologue check", func(t *testing.T) {
+		got := ruletest.RunWith(t, sectionSpacing, map[string]string{
+			"go.mod":       "module x\n",
+			"pkg/a/b/b.go": guardsRunIntoBody,
+		}, map[string]int{"min_guards": 0})
+		ruletest.Assert(t, got, nil)
+	})
+
+	// A rule about blank lines has to survive the formatter that owns them.
+	t.Run("gofmt does not change the finding", func(t *testing.T) {
+		files := map[string]string{
+			"go.mod":       "module x\n",
+			"pkg/a/b/b.go": guardsRunIntoBody,
+		}
+		ruletest.AssertGofmtStable(t, sectionSpacing, files)
+		ruletest.AssertDeterministic(t, sectionSpacing, files)
+	})
+
+	t.Run("conforming tree is silent", func(t *testing.T) {
+		ruletest.Assert(t, ruletest.Run(t, sectionSpacing, conforming), nil)
+	})
+}
+
 func TestFamilyIsWellFormed(t *testing.T) {
 	rules := Rules()
-	if len(rules) != 35 {
-		t.Fatalf("family has %d rules, want 35", len(rules))
+	if len(rules) != 36 {
+		t.Fatalf("family has %d rules, want 36", len(rules))
 	}
 	for _, r := range rules {
 		t.Run(r.ID, func(t *testing.T) {

@@ -68,6 +68,7 @@ rules:
   logic/negated-condition: warning
   logic/panic-outside-main: error
   logic/pointer-to-slice-or-map: warning
+  logic/section-spacing: warning
   logic/single-case-switch: warning
   logic/stringly-typed-enum: warning
   logic/unsigned-underflow: warning

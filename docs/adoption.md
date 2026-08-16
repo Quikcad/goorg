@@ -122,6 +122,7 @@ Roughly cheapest first:
 | `org/private-functions-last` | Same |
 | `logic/max-condition-operands` | Extract a named predicate |
 | `logic/prefer-guard-clause` | Invert and unindent |
+| `logic/section-spacing` | Insert a blank line; gofmt will not undo it |
 
 Leave these for last — each is a design decision, not an edit:
 
@@ -136,7 +137,7 @@ The type tier costs about twenty times the syntax tier, because it type-checks
 the module. While iterating:
 
 ```sh
-goorg check ./... --syntax-only    # 39 of 56 rules, milliseconds
+goorg check ./... --syntax-only    # 40 of 57 rules, milliseconds
 ```
 
 CI should run the full set. `--syntax-only` announces what it skipped rather

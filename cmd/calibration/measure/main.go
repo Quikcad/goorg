@@ -34,9 +34,35 @@ func (s *series) report() string {
 	for _, v := range s.values {
 		sum += v
 	}
+
 	return fmt.Sprintf("%-28s n=%-6d mean=%-6.1f p50=%-4d p75=%-4d p90=%-4d p95=%-4d p99=%-4d max=%d",
 		s.name, len(s.values), float64(sum)/float64(len(s.values)),
 		p(0.50), p(0.75), p(0.90), p(0.95), p(0.99), s.values[len(s.values)-1])
+}
+
+// rate is the shape a spacing convention needs instead of a percentile. A
+// budget asks "how big do people let this get"; a convention asks "how often do
+// people already do it", and the answer sets the adoption cost directly.
+type rate struct {
+	name       string
+	total      int
+	conforming int
+}
+
+func (r *rate) add(ok bool) {
+	r.total++
+	if ok {
+		r.conforming++
+	}
+}
+
+func (r *rate) report() string {
+	if r.total == 0 {
+		return fmt.Sprintf("%-28s (no data)", r.name)
+	}
+	return fmt.Sprintf("%-28s n=%-6d already spaced=%-6d (%.1f%%)  would flag=%d",
+		r.name, r.total, r.conforming,
+		100*float64(r.conforming)/float64(r.total), r.total-r.conforming)
 }
 
 //goorg:ignore logic/max-function-lines — a measurement script; splitting it would hide the metric list
@@ -56,6 +82,8 @@ func main() {
 	funcLines := &series{name: "lines/function"}
 	nesting := &series{name: "nesting depth/function"}
 	params := &series{name: "params/function"}
+	guardBoundary := &rate{name: "guard prologue -> body"}
+	resultBoundary := &rate{name: "body -> multi-line result"}
 
 	var generated int
 	fset := token.NewFileSet()
@@ -150,6 +178,10 @@ func main() {
 
 		ast.Inspect(f, func(n ast.Node) bool {
 			switch n := n.(type) {
+			case *ast.FuncDecl:
+				scanSections(fset, n.Body, guardBoundary, resultBoundary)
+			case *ast.FuncLit:
+				scanSections(fset, n.Body, guardBoundary, resultBoundary)
 			case *ast.StructType:
 				count := 0
 				for _, field := range n.Fields.List {
@@ -193,6 +225,72 @@ func main() {
 		condOperands, varBlocks, funcLines, nesting, params,
 	} {
 		fmt.Println(s.report())
+	}
+	fmt.Println()
+	for _, r := range []*rate{guardBoundary, resultBoundary} {
+		fmt.Println(r.report())
+	}
+}
+
+// scanSections counts the section boundaries logic/section-spacing asks for and
+// how many the corpus already draws.
+//
+// The classification is restated here rather than imported: the rule's helpers
+// are unexported, and the tool deliberately depends on nothing but go/ast so a
+// measurement stays reproducible against a goorg that has moved on. Keep the
+// two definitions in step — see pkg/rules/logic/section_spacing.go.
+func scanSections(fset *token.FileSet, body *ast.BlockStmt, guards, results *rate) {
+	if body == nil || len(body.List) == 0 {
+		return
+	}
+	line := func(p token.Pos) int { return fset.Position(p).Line }
+	spaced := func(i int) bool { return line(body.List[i].Pos())-line(body.List[i-1].End()) > 1 }
+	span := func(s ast.Stmt) int { return line(s.End()) - line(s.Pos()) + 1 }
+
+	n := 0
+	for _, stmt := range body.List {
+		if !isGuardClause(stmt) {
+			break
+		}
+		n++
+	}
+	counted := -1
+	if n >= 2 && n < len(body.List) && !(len(body.List)-n == 1 && span(body.List[n]) < 2) {
+		guards.add(spaced(n))
+		counted = n
+	}
+
+	at := len(body.List) - 1
+	if len(body.List) <= 3 || at == counted {
+		return
+	}
+	if result, ok := body.List[at].(*ast.ReturnStmt); ok && span(result) >= 3 {
+		results.add(spaced(at))
+	}
+}
+
+// isGuardClause reports whether a statement is a conditional early exit.
+func isGuardClause(stmt ast.Stmt) bool {
+	cond, ok := stmt.(*ast.IfStmt)
+	if !ok || cond.Else != nil || cond.Body == nil {
+		return false
+	}
+	list := cond.Body.List
+	if len(list) == 0 {
+		return false
+	}
+	switch last := list[len(list)-1].(type) {
+	case *ast.ReturnStmt, *ast.BranchStmt:
+		return true
+	case *ast.ExprStmt:
+		call, ok := last.X.(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		name, ok := call.Fun.(*ast.Ident)
+		return ok && name.Name == "panic"
+	default:
+		return false
 	}
 }
 

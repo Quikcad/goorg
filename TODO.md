@@ -6,7 +6,7 @@ Implementation plan, derived from the three specifications:
 - [`docs/file-organization.md`](docs/file-organization.md) — `org/`, 12 rules
 - [`docs/logic-organization.md`](docs/logic-organization.md) — `logic/` 7 + `pat/` 2, plus 50 proposed
 
-**55 rules implemented** — 39 syntax-tier, 16 type-tier.
+**57 rules implemented** — 40 syntax-tier, 17 type-tier.
 
 Decisions that bind implementation are recorded in
 [`docs/decisions.md`](docs/decisions.md).

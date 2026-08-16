@@ -692,6 +692,121 @@ No type information, no heuristic, no false positives.
 
 ---
 
+## Rules added after the specification
+
+Neither one of the nine specified rules nor one of the fifty proposals below.
+Recorded here so the standard stays complete.
+
+### `logic/section-spacing`
+
+**A run of guard clauses, and a multi-line result, are separated from the body
+by a blank line.**
+
+```go
+// ✗ four preconditions, the work, and the result, run together
+func MakeBSpline(degree int, ctrl []Vec3, weights, knots []float64) (BSpline, error) {
+    if degree < 1 {
+        return BSpline{}, errDegree
+    }
+    if len(ctrl) < degree+1 {
+        return BSpline{}, errControlPoints
+    }
+    w, rational, err := normalizeWeights(weights, len(ctrl))
+    if err != nil {
+        return BSpline{}, err
+    }
+    return BSpline{
+        ctrl:     ctrl,
+        weights:  w,
+        rational: rational,
+    }, nil
+}
+
+// ✓ three sections, each answering a different question
+func MakeBSpline(degree int, ctrl []Vec3, weights, knots []float64) (BSpline, error) {
+    if degree < 1 {
+        return BSpline{}, errDegree
+    }
+    if len(ctrl) < degree+1 {
+        return BSpline{}, errControlPoints
+    }
+
+    w, rational, err := normalizeWeights(weights, len(ctrl))
+    if err != nil {
+        return BSpline{}, err
+    }
+
+    return BSpline{
+        ctrl:     ctrl,
+        weights:  w,
+        rational: rational,
+    }, nil
+}
+```
+
+#### Configuration
+
+```yaml
+settings:
+  logic/section-spacing:
+    # Guards in the leading run before the body needs setting off. 0 disables.
+    min_guards: 2
+    # Lines the trailing return must span to need setting off. 0 disables.
+    min_result_lines: 3
+    # Work that must precede that return before separating it buys anything.
+    min_body_statements: 3
+```
+
+#### Rationale
+
+A function that validates, works, and returns is three things, and the reader is
+looking for exactly one of them. Run together, finding the work means scanning
+every guard to check it *is* a guard — at a glance a rejected precondition and
+the real computation are the same shape, an `if` with a `return` in it.
+
+This is the one piece of vertical structure `gofmt` has no opinion on. It never
+inserts a blank line between statements and never removes one; it only collapses
+runs of two or more into one. Where the sections fall is left entirely to the
+author, which is why it drifts, and why the rule can exist without competing
+with the formatter.
+
+#### Detection
+
+Syntactic. A guard clause is an `IfStmt` with no `else` whose body ends in
+`return`, `break`, `continue`, `goto` or `panic`. The leading run of them is the
+prologue; the boundary is the statement after it. The result boundary is a
+trailing `ReturnStmt` spanning `min_result_lines` or more.
+
+Both checks contribute to one set keyed by statement index, so a function whose
+guards run straight into a multi-line return is one missing blank line and one
+finding, not two reports of the same gap.
+
+A line gap wider than one counts as separated. `gofmt` leaves nothing but blank
+lines and comments between two statements, so a comment counts as a boundary —
+it divides the sections at least as clearly, and demanding a blank line as well
+would argue with an author who has already been explicit.
+
+Two exemptions keep it off correct Go: a function that is nothing but guards has
+no body to set them off from, and a lone one-line statement after the guards
+(`return nil` closing a run of validations) is the result rather than a body.
+
+#### Calibration
+
+Measured as a conformance rate rather than a percentile — see
+[D5](decisions.md#a-convention-is-measured-as-a-rate-not-a-percentile). Both
+boundaries sit at 48.5% already-spaced in the standard library, at a cost of
+roughly 0.12 findings per file.
+
+#### Interactions
+
+- [`logic/prefer-guard-clause`](#logicprefer-guard-clause) creates the guards
+  this rule then asks to be set off, so adopting that one tends to produce
+  findings here.
+- Reports position *within* a function, so it is `PlacementOrder` and never
+  vetoes a relocation proposed by another rule.
+
+---
+
 ## Proposed rules
 
 Fifty candidates for approve/deny. Tick to approve.

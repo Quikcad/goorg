@@ -133,6 +133,7 @@ func classifyGlobal(gen *ast.GenDecl, vs *ast.ValueSpec) globalKind {
 	if hasEmbedDirective(gen) || (vs.Type != nil && decl.IsSelector(vs.Type, "embed", "FS")) {
 		return exemptEmbeddedFilesystem
 	}
+
 	if vs.Type != nil {
 		if id, ok := vs.Type.(*ast.Ident); ok && id.Name == "error" {
 			return exemptSentinelErrors
@@ -172,6 +173,7 @@ func checkGlobalSpec(c *rule.Context, gen *ast.GenDecl, vs *ast.ValueSpec, s *gl
 	if kind != exemptLookupTables || !s.RequireUnexportedTables || !anyExported(vs) {
 		return nil
 	}
+
 	return &diag.Diagnostic{
 		Position: c.Pos(vs),
 		Message:  fmt.Sprintf("exported lookup table %s can be mutated by any importer", vs.Names[0].Name),

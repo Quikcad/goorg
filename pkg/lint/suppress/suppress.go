@@ -210,6 +210,7 @@ func coverage(p *project.Project, f *project.File, line int) (start, end int) {
 		if p.Position(n.Pos()).Line != target {
 			return true
 		}
+
 		if e := p.Position(n.End()).Line; e > widest {
 			widest = e
 		}

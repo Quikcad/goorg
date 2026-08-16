@@ -227,7 +227,7 @@ func TestEveryApprovedRuleIsCovered(t *testing.T) {
 	for _, id := range []string{
 		"logic/iota-candidate", "logic/max-condition-operands",
 		"logic/max-object-members", "logic/prefer-guard-clause",
-		"logic/max-function-lines",
+		"logic/max-function-lines", "logic/section-spacing",
 		"logic/interface-registry", "logic/any-should-be-generic",
 		"logic/ideal-numeric-type", "logic/enum-missing-string",
 		"logic/interface-at-consumer", "logic/constraint-too-wide",

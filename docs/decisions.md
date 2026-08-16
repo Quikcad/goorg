@@ -249,6 +249,39 @@ currently sits — which is what a budget on an already-tidy codebase is for.
 predates most of Go's conventions. It happened to generalise here; that is not
 a guarantee it will for a third codebase.
 
+### A convention is measured as a rate, not a percentile
+
+`logic/section-spacing` was the first rule with nothing to take a percentile of.
+A budget asks *how big do people let this get*, and the tail answers it. A
+convention asks *how often do people already do this*, and the answer is a
+conformance rate — which is also the adoption cost, directly.
+
+Measured over the same corpus, at the definitions the rule ships with:
+
+| Boundary | sites | already spaced | would flag |
+| --- | --- | --- | --- |
+| guard prologue → body | 610 | 296 (48.5%) | 314 |
+| body → multi-line result | 161 | 78 (48.4%) | 83 |
+
+Two things decided the rule. First, ~0.12 findings per file is a negligible
+adoption cost — small enough that the rule can ship on rather than opt-in.
+Second, both boundaries land at 48.5% independently, at unrelated call sites.
+A convention nobody holds would sit near 0%; one everybody holds would not need
+a linter. Half is the signature of a rule people follow when they are thinking
+about it and forget when they are not, which is the only thing a style rule can
+usefully automate.
+
+The earlier, looser definition — any leading guard, run length ≥ 1 — sat at
+28% and would have flagged some 4000 stdlib sites. The gap between the two is
+what tightening `min_guards` to 2 and exempting a lone `return nil` bought;
+neither was guessed.
+
+The same measurement rejected a second rule. A `max-paragraph-lines` budget over
+blank-line-free statement runs measures cleanly (p95 = 21 lines, p99 = 46) but
+would flag roughly three sites per file at p95, and would not have caught the
+function that prompted the rule — its longest run is six statements. Density was
+the wrong model; section boundaries were the right one.
+
 ---
 
 ## D6 — Test files are checked by structure rules, exempt from budgets
