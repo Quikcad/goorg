@@ -189,6 +189,7 @@ func (c *Config) Excluder() func(string) bool {
 		}
 		patterns[i] = p
 	}
+
 	return func(rel string) bool {
 		for _, p := range patterns {
 			if glob.MatchPath(p, rel) {
@@ -228,6 +229,7 @@ func matchesAnyRule(key string, set *rule.Set) bool {
 	if !strings.ContainsAny(key, "*?") {
 		return false
 	}
+
 	for _, id := range set.IDs() {
 		if glob.MatchRuleID(key, id) {
 			return true

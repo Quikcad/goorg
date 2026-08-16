@@ -44,6 +44,7 @@ func Rules() []*rule.Rule {
 		panicOutsideMain,
 		pointerToSliceOrMap,
 		preferGuardClause,
+		sectionSpacing,
 		singleCaseSwitch,
 		stringlyTypedEnum,
 		unsignedUnderflow,

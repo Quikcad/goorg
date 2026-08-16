@@ -107,6 +107,7 @@ func checkConstBlock(c *rule.Context, d *ast.GenDecl, s *iotaCandidateSettings) 
 		message += ", with a named type"
 		help = "declare a named type for the run and replace the literals with iota"
 	}
+
 	return &diag.Diagnostic{
 		Position: c.Pos(d),
 		Message:  message,

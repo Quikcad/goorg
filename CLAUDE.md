@@ -9,13 +9,13 @@ an in-house standard covering what `gofmt` and `golangci-lint` have no opinion
 about: where a package lives, which file a type belongs in, how big a type is
 allowed to get, and what a constructor is called.
 
-56 rules across four families:
+57 rules across four families:
 
 | Prefix | Family | Rules |
 | --- | --- | --- |
 | `dir/` | directory organization — where code lives | 6 |
 | `org/` | file organization — how code splits across files | 13 |
-| `logic/` | logic organization — how code is shaped | 35 |
+| `logic/` | logic organization — how code is shaped | 36 |
 | `pat/` | pattern correctness — naming and declaration layout | 2 |
 
 The standard itself lives in [`docs/`](docs/). Decisions that bind the
@@ -36,7 +36,7 @@ task --list
 ```
 
 Always run `task` before declaring work done. The `dogfood` step is not
-advisory: goorg must pass all 56 of its own rules, and CI fails if it does not.
+advisory: goorg must pass all 57 of its own rules, and CI fails if it does not.
 
 ## Architecture
 
